@@ -1,47 +1,47 @@
-# Phase 4 — Nghiên cứu tích hợp dữ liệu Facebook
+# Phase 4 — Facebook Data Integration Research
 
-> **Cập nhật phiên bản 0.5.0:** Addon hiện quét tab Reels, tự cuộn tối đa 100 bước và quan sát phản hồi Reel mà Facebook đã tải vào tab để lấy ngày đăng, lượt xem, lượt thích, bình luận và caption. Addon không tự gửi truy vấn GraphQL. CSV SortLens do người dùng gửi xác nhận các trường này trong 6 Reel tham chiếu; tệp không có cột chia sẻ. Chưa kiểm thử end-to-end trên phiên Facebook đăng nhập thực, nên cần xác minh độ phủ trên Page người dùng. Quyền Chrome cho phép thao tác kỹ thuật, nhưng không thay thế sự cho phép của Meta theo [chính sách thu thập tự động](https://about.fb.com/news/2021/04/how-we-combat-scraping/). Các kết luận “chưa triển khai” bên dưới phản ánh giai đoạn nghiên cứu trước phiên bản 0.4.1.
+> **Update through version 0.6.1:** The extension scans a Page or profile Reels tab, scrolls up to 100 steps, and observes Reel responses Facebook has already loaded in the tab to read posted dates, views, likes, comments, and captions. It does not issue its own GraphQL requests. The user-provided SortLens CSV contains those fields for six reference Reels but no shares column. The Page workflow has been tested by the user; profile scanning still needs live verification. Chrome permission enables the browser operation but does not replace Meta's permission under its [automated collection policy](https://about.fb.com/news/2021/04/how-we-combat-scraping/). The historical “not implemented” decisions below predate version 0.4.1.
 
-Kiểm tra ngày **14/11/2026**. Tài liệu Meta và quyền truy cập có thể thay đổi; kiểm tra lại trước khi phát triển connector. Báo cáo này phân biệt khả năng kỹ thuật, quyền truy cập và mức độ đầy đủ của dữ liệu.
+Reviewed on **November 14, 2026**. Meta documentation and access rules can change; check them again before developing a connector. This report distinguishes technical feasibility, access rights, and data completeness.
 
-## Kết luận triển khai ở giai đoạn nghiên cứu ban đầu
+## Historical implementation decision
 
-Ở giai đoạn này, CSV là nguồn dữ liệu đầu tiên. Những nhận định trong bảng là lịch sử quyết định, không mô tả bản build 0.5.0. Bản hiện tại có content script và quyền Facebook tùy chọn; vẫn không dùng Meta Graph API chính thức và không cam kết quét toàn bộ lịch sử Page.
+CSV was the first data source at this stage. The decisions in this table record the earlier research phase and do not describe the current build. Version 0.6.1 includes content scripts and optional Facebook host access, but it still does not use the official Meta Graph API or claim to scan an account's complete Reel history.
 
-| Nguồn | Khả năng kỹ thuật | Điều kiện truy cập và giới hạn | Quyết định hiện tại |
+| Source | Technical feasibility | Access conditions and limits | Decision at the time |
 |---|---|---|---|
-| CSV do người dùng cung cấp | Nhập, chuẩn hóa, xếp hạng và xuất đã hoạt động | Người cung cấp chịu trách nhiệm có quyền sử dụng dữ liệu; độ đầy đủ chưa xác minh | Giữ làm nguồn mặc định |
-| Graph API cho Page do người dùng quản lý | Có Page API và [Reel video insights](https://developers.facebook.com/docs/graph-api/reference/video/video_insights/) | Cần Page role/token và các quyền được Meta cấp; phải xác minh endpoint danh sách Reel và từng trường trên Page thực tế | Chỉ làm thử nghiệm sau khi có Page và quyền phù hợp |
-| Graph API cho Page khác | [Page Public Content Access](https://developers.facebook.com/docs/graph-api/reference/page/) có thể cho phép một số dữ liệu công khai nếu được duyệt | Không chứng minh được danh sách Reel đầy đủ hoặc mọi lượt xem của Page bất kỳ | Chưa triển khai |
-| Meta Content Library | Có dữ liệu công khai và bộ lọc Reels | [Môi trường truy cập kiểm soát dành cho nghiên cứu](https://developers.facebook.com/docs/content-library-and-api); API dùng trong môi trường nghiên cứu/cleanroom được duyệt, tải CSV có điều kiện riêng | Không coi là connector Chrome phổ thông |
-| Content script trên tab Facebook | Chrome cho phép [đọc DOM của trang](https://developer.chrome.com/docs/extensions/develop/concepts/content-scripts/) khi có quyền phù hợp | Meta nói [thu thập tự động cần được cho phép trước](https://about.fb.com/news/2021/04/how-we-combat-scraping/). Quyền trình duyệt không thay thế quyền từ Meta | Chưa triển khai |
-| Nhà cung cấp dữ liệu có giấy phép | Có thể chuyển dữ liệu được cấp quyền vào contract nguồn chung | Cần hợp đồng nêu phạm vi, quyền lưu/xuất và định nghĩa chỉ số | Chỉ cân nhắc khi có nguồn cụ thể |
+| User-provided CSV | Import, normalization, ranking, and export worked | The provider must have rights to use the data; completeness was unverified | Use as the initial source |
+| Graph API for a managed Page | Page API and [Reel video insights](https://developers.facebook.com/docs/graph-api/reference/video/video_insights/) exist | Requires a Page role/token and Meta-granted permissions; list endpoints and fields need validation on a real Page | Experiment only after obtaining a suitable Page and permissions |
+| Graph API for another Page | Approved [Page Public Content Access](https://developers.facebook.com/docs/graph-api/reference/page/) may permit some public data | A complete Reel list or every view count for an arbitrary Page was not established | Not implemented |
+| Meta Content Library | Contains public data and Reel filters | [Controlled research access](https://developers.facebook.com/docs/content-library-and-api); its API runs in an approved research environment and CSV downloads have separate conditions | Do not treat it as a general Chrome connector |
+| Content script on a Facebook tab | Chrome can [read a page's DOM](https://developer.chrome.com/docs/extensions/develop/concepts/content-scripts/) with suitable permission | Meta says [automated collection requires prior permission](https://about.fb.com/news/2021/04/how-we-combat-scraping/). Browser permission does not replace Meta permission | Not implemented at that stage |
+| Licensed data provider | Licensed data could fit the shared source contract | A contract must define scope, storage/export rights, and metric definitions | Consider only with a specific provider |
 
-## Điểm cần xác minh ở Meta Graph API
+## Questions for the official Meta Graph API
 
-1. [Page API](https://developers.facebook.com/docs/graph-api/reference/page/) phân biệt dữ liệu Page sở hữu với dữ liệu công khai được cấp tính năng Page Public Content Access. Được đăng nhập Facebook trong Chrome không tự tạo quyền Graph API.
-2. [Page Feed](https://developers.facebook.com/docs/graph-api/reference/page/feed/) hướng danh sách Reels sang `Page VideoReels`, nhưng [tham chiếu `Page VideoReels`](https://developers.facebook.com/docs/graph-api/reference/page/video_reels/) hiện ghi thao tác đọc trên endpoint đó không được hỗ trợ. **Hai trang tài liệu chưa nhất quán**; cần xác minh bằng tài khoản thử nghiệm có quyền trên Page sở hữu, không suy ra rằng endpoint đọc hoạt động cho Page khác.
-3. [Reel video insights](https://developers.facebook.com/docs/graph-api/reference/video/video_insights/) có nhiều metric khác nhau: `blue_reels_play_count` không tính replay, `fb_reels_total_plays` tính replay. [Meta Content Library](https://developers.facebook.com/docs/content-library-and-api/appendix/data-dictionary) định nghĩa views theo nội dung xuất hiện trên màn hình, với các điều kiện hiển thị số liệu. Không tự động ghi các metric này vào cột `views` hiện tại hoặc trộn chúng trong một bảng xếp hạng nếu chưa định nghĩa phép so sánh.
-4. [Page Feed](https://developers.facebook.com/docs/graph-api/reference/page/feed/) có giới hạn trả về và quy tắc phân trang. Ngay cả khi API trả dữ liệu, phải kiểm tra số Reel trong khoảng thời gian, giới hạn truy vấn, nội dung ẩn/giới hạn và thời điểm thu thập trước khi gọi kết quả là Top toàn bộ Page.
+1. [Page API](https://developers.facebook.com/docs/graph-api/reference/page/) distinguishes access to a managed Page from approved Page Public Content Access. Being logged into Facebook in Chrome does not grant Graph API permissions.
+2. [Page Feed](https://developers.facebook.com/docs/graph-api/reference/page/feed/) points Reel listings to `Page VideoReels`, while the [`Page VideoReels` reference](https://developers.facebook.com/docs/graph-api/reference/page/video_reels/) says reading that endpoint is unsupported. **These documents appeared inconsistent when reviewed**; verify behavior with a test account that has rights to a managed Page rather than assuming the endpoint works for another Page.
+3. [Reel video insights](https://developers.facebook.com/docs/graph-api/reference/video/video_insights/) exposes different metrics: `blue_reels_play_count` excludes replays, while `fb_reels_total_plays` includes them. [Meta Content Library](https://developers.facebook.com/docs/content-library-and-api/appendix/data-dictionary) defines views based on content appearing on screen, subject to its display rules. Do not automatically place these distinct metrics into the current `views` column or combine them in one ranking without a defined comparison.
+4. [Page Feed](https://developers.facebook.com/docs/graph-api/reference/page/feed/) has response limits and pagination. Even if an API returns data, check the number of Reels in the selected period, query limits, hidden or restricted content, and collection time before calling the result a Top list for an entire Page.
 
-## Điều biết được từ sản phẩm tham khảo
+## What the reference product showed
 
-[Hướng dẫn SortLens](https://usesortlens.com/knowledge-base/facebook) mô tả extension hoạt động trên tab Reels, cuộn để tải thêm trong khoảng thời gian chọn và dùng các số Facebook cung cấp cho trình duyệt; lượt xem hiển thị có thể đã làm tròn. Đây là mô tả hành vi sản phẩm, không xác nhận giấy phép thu thập hay khả năng lấy toàn bộ lịch sử của Page. FFB Lens có bộ đọc và luồng quét riêng, không dùng lại mã SortLens.
+The [SortLens guide](https://usesortlens.com/knowledge-base/facebook) describes operation on a Reels tab, scrolling to load more within a selected period, and using counts Facebook provides to the browser; displayed views may be rounded. This product description does not establish data-collection rights or the ability to retrieve a Page's complete history. FFB Lens has its own reader and scan flow and does not reuse SortLens code.
 
-## Kiến trúc đã chuẩn bị
+## Prepared architecture
 
-`src/data/sources.ts` định nghĩa `SourceAdapter` và `SourceBatch`. Adapter hiện tại là `csvFileSource`; nó đánh dấu phạm vi là `unverified`. Mọi batch đi qua `ingestSourceBatch` để kiểm tra URL, timestamp, số liệu và chống trùng trước khi lưu. Contract phân biệt `user_supplied_views`, số views hiển thị, Reel plays và Content Library views; ingestion từ chối đẩy Reel plays hoặc Content Library views vào trường `views` như thể cùng một chỉ số.
+`src/data/sources.ts` defines `SourceAdapter` and `SourceBatch`. The initial `csvFileSource` adapter marks coverage as `unverified`. Every batch passes through `ingestSourceBatch` to validate URLs, timestamps, metrics, and duplicates before storage. The contract distinguishes `user_supplied_views`, Facebook-displayed views, Reel plays, and Content Library views. Ingestion rejects Reel plays and Content Library views in the `views` field as if they were the same metric.
 
-Thông tin `source` và `collected_at` đã được lưu trên từng Reel. Metadata cấp batch như `coverage`, `accessBasis` và `viewsMetric` hiện chỉ tồn tại trong lúc nhập. **Trước khi phát hành connector API**, cần lưu chúng lâu dài và bổ sung UI giải thích định nghĩa chỉ số, độ đầy đủ và quyền sử dụng. Không coi giá trị `accessBasis` do code tự khai báo là bằng chứng đã được Meta phê duyệt.
+Each Reel stores `source` and `collected_at`. Batch metadata such as `coverage`, `accessBasis`, and `viewsMetric` currently exists only during ingestion. **Before releasing an API connector**, persist that metadata and add UI explaining metric definitions, completeness, and usage rights. A code-assigned `accessBasis` value is not evidence of Meta approval.
 
-## Các bước để thử nguồn Meta chính thức
+## Steps to evaluate an official Meta source
 
-1. Chọn một **Page do người thử quản lý** và một Meta app có quyền cần thiết. Xác minh quyền và phiên bản Graph API trong tài liệu Meta tại thời điểm thử; không gửi access token vào chat, CSV hoặc kho mã.
-2. Dùng công cụ chính thức như Graph API Explorer để kiểm tra liệu Page có thể liệt kê Reel hay không, ID/permalink/ngày đăng/caption có trả đủ không, và metric nào thực sự có thể đọc. Ghi lại các lỗi quyền và giới hạn phân trang.
-3. So sánh một mẫu Reel với giao diện quản trị Page để xác định định nghĩa và thời điểm cập nhật metric. Không chuyển `plays` thành `views` nếu không có cơ sở.
-4. Nếu bài thử thành công và quyền sử dụng được xác nhận, thiết kế luồng OAuth/token phù hợp và cách lưu provenance trước khi thêm adapter. Chỉ xin quyền Chrome tối thiểu khi connector đó thực sự hoạt động; [Chrome hỗ trợ quyền tùy chọn](https://developer.chrome.com/docs/extensions/reference/api/permissions/) khi cần.
-5. Kiểm thử phạm vi: số Reel đã đọc, ngày cũ nhất/mới nhất, số trang phân trang, số trường thiếu và trạng thái hoàn tất. UI chỉ được gọi “Top N của Page trong kỳ” khi phạm vi đã được xác minh; nếu không, ghi “Top N trong dữ liệu đã thu thập”.
+1. Select a **Page managed by the tester** and a Meta app with the necessary permissions. Check permission and Graph API version requirements in Meta's documentation at test time. Do not put access tokens in chat, CSV files, or source control.
+2. Use an official tool such as Graph API Explorer to test whether the Page can list Reels, whether IDs, permalinks, posted dates, and captions are complete, and which metrics are actually readable. Record permission errors and pagination limits.
+3. Compare sample Reels with the Page management UI to establish metric definitions and update timing. Do not equate `plays` with `views` without evidence.
+4. If the experiment succeeds and usage rights are confirmed, design the OAuth/token flow and provenance storage before adding an adapter. Request only the minimum Chrome permissions needed by a working connector; [Chrome supports optional permissions](https://developer.chrome.com/docs/extensions/reference/api/permissions/) where appropriate.
+5. Test coverage: Reels read, oldest and newest dates, pagination pages, missing fields, and completion status. Call a result “Top N for the Page in this period” only when coverage is verified; otherwise call it “Top N in collected data.”
 
-### Với Page tham khảo Fearless Motivation
+### Fearless Motivation reference Page
 
-Không có xác nhận rằng người dùng quản lý Page này hoặc được cấp Page Public Content Access. Do đó, từ URL `https://www.facebook.com/fearlessmotivationofficial/reels/` hiện chỉ có thể gắn ngữ cảnh cho dữ liệu nhập. Không thể cam kết lấy 10 Reel nhiều lượt xem nhất toàn bộ lịch sử Page bằng extension hiện tại.
+There is no confirmation that the user manages this Page or has Page Public Content Access. The URL `https://www.facebook.com/fearlessmotivationofficial/reels/` identifies the account being scanned or imported, but the extension cannot guarantee the ten most-viewed Reels across that Page's complete history.

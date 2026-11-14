@@ -46,7 +46,8 @@ export function browserVisibleBatch(pageUrl: string, visible: VisibleReel[], col
   if (!normalizedPage || !['facebook.com', 'web.facebook.com'].includes(new URL(normalizedPage).hostname)) {
     throw new Error('URL Page không hợp lệ.');
   }
-  const pageName = new URL(normalizedPage).pathname.split('/').filter(Boolean)[0] || '';
+  const page = new URL(normalizedPage);
+  const pageName = page.pathname === '/profile.php' ? `Profile ${page.searchParams.get('id')}` : page.pathname.split('/').filter(Boolean)[0] || '';
   return {
     adapterId: 'facebook_visible_tab',
     accessBasis: 'browser_visible_user_initiated',

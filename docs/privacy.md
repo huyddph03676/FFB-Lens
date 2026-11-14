@@ -1,28 +1,28 @@
-# Chính sách quyền riêng tư — FFB Lens
+# Privacy Policy — FFB Lens
 
-Cập nhật: 14/11/2026. Áp dụng cho extension FFB Lens phiên bản 0.5.1 hiện tại.
+Updated November 14, 2026. Applies to FFB Lens extension version 0.6.1.
 
-## Dữ liệu được xử lý
+## Data processed
 
-- Khi người dùng bấm **Quét Reels trên tab**, extension tải lại tab Reels một lần, đọc các thẻ Reel và quan sát phản hồi GraphQL mà Facebook đã tải cho tab đó. Chỉ URL Reel, caption, ngày đăng, lượt xem, thích, bình luận và chia sẻ (nếu có trong phản hồi) được giữ lại. Extension cuộn theo giới hạn đã chọn, cũng có thể đọc tệp CSV do người dùng tự chọn hoặc bản ghi nhập tay. Dữ liệu chuẩn hóa được lưu trong IndexedDB của Chrome trên thiết bị.
-- URL Page gắn ngữ cảnh cho Reel được quét, nhập tay hoặc dòng CSV thiếu `page_url`. Extension không tự gọi endpoint Facebook, không đọc cookie, mật khẩu hoặc nội dung ngoài tab đang được người dùng chọn. Phản hồi GraphQL được xử lý tạm thời để lấy các trường Reel nêu trên; phản hồi thô không được lưu.
+- When a user clicks **Scan Reels on tab** on a Page or profile Reels tab, the extension reloads that tab once, reads Reel cards, and observes GraphQL responses Facebook has already loaded in it. It retains only Reel URLs, captions, posted dates, views, likes, comments, and shares when available in the response. It scrolls within the selected limit and can also read a CSV file chosen by the user or manually entered records. Normalized data is stored in Chrome IndexedDB on the device.
+- The account URL provides context for scanned Reels, manually entered Reels, and CSV rows missing `page_url`. The extension does not make its own Facebook endpoint requests or read cookies, passwords, or content outside the selected tab. GraphQL responses are processed temporarily to extract the Reel fields above; raw responses are not stored.
 
-## Chia sẻ và truyền dữ liệu
+## Sharing and transmission
 
-FFB Lens hiện không có máy chủ, tài khoản, analytics hay mã theo dõi. Mã extension không gửi URL, số liệu hoặc caption đã đọc đến FFB Lens hoặc bên thứ ba. Khi người dùng mở Reel gốc, Chrome điều hướng đến URL đó theo thao tác của người dùng.
+FFB Lens has no server, account system, analytics, or tracking code. The extension does not send collected URLs, metrics, or captions to FFB Lens or third parties. When a user opens an original Reel, Chrome navigates to that URL at the user's request.
 
-## Quyền truy cập
+## Permissions
 
-Extension yêu cầu quyền Chrome `sidePanel`, `activeTab` và `scripting`. Khi người dùng bấm Quét lần đầu, Chrome hỏi cấp quyền host Facebook tùy chọn. Quyền host có thể được giữ lại cho lần sau và có thể thu hồi trong quản lý extension. Addon đăng ký một content script trên Facebook để quan sát phản hồi Reel khi ở tab Reels; script đọc thẻ và cuộn chỉ được chèn vào tab Reels mà người dùng chọn. Không có quyền đọc lịch sử duyệt web.
+The extension requests Chrome's `sidePanel`, `activeTab`, and `scripting` permissions. The first time a user scans, Chrome asks for optional Facebook host access. Chrome may retain this access for later scans, and the user can revoke it in extension settings. The extension registers a Facebook content script to observe Reel responses while on a Reels tab. The card-reading and scrolling script is injected only into the Reels tab selected by the user. The extension does not request browsing-history access.
 
-Lựa chọn ngôn ngữ Tiếng Việt/English được lưu trong localStorage của extension trên thiết bị để giữ lại khi mở Side Panel lần sau. Trang quyền riêng tư có bản tiếng Anh riêng.
+The Vietnamese/English language choice is stored in the extension's localStorage on the device so it persists when the side panel is reopened. The extension includes separate privacy pages for both languages.
 
-## Xóa và xuất dữ liệu
+## Deletion and export
 
-Người dùng có thể xuất danh sách đang hiển thị thành CSV/XLSX. Tệp xuất do Chrome lưu theo lựa chọn của người dùng. Nút **Xóa dữ liệu** trong Side Panel xóa toàn bộ bản ghi Reels của extension khỏi IndexedDB sau khi xác nhận. Gỡ extension hoặc xóa dữ liệu trang/extension trong Chrome cũng có thể xóa bản ghi này. FFB Lens không giữ bản sao máy chủ để khôi phục.
+Users can export the displayed list as CSV or XLSX. Chrome saves the exported file as directed by the user. After confirmation, **Clear data** in the side panel deletes all Reel records from the extension's IndexedDB. Uninstalling the extension or clearing its data in Chrome may also remove those records. FFB Lens has no server copy from which to restore them.
 
-## Giới hạn
+## Limitations
 
-Kết quả chỉ phản ánh Reel được tải và nhận diện trong phạm vi lần quét, cùng dữ liệu nhập bổ sung. Số liệu Facebook có thể được làm tròn hoặc thiếu. Việc sử dụng cơ chế thu thập tự động cần phù hợp với điều khoản Meta và quyền mà người dùng được cấp.
+Results reflect only Reels loaded and recognized during the scan, plus any additional imported data. Facebook metrics may be rounded or missing. Automated collection must comply with Meta's terms and the user's access rights.
 
-Nếu phiên bản sau thay đổi cách xử lý hoặc chia sẻ dữ liệu, chính sách này và thông báo trong extension cần được cập nhật trước khi phát hành.
+If a future version changes how data is processed or shared, this policy and the notice in the extension must be updated before release.

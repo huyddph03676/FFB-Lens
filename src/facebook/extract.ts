@@ -1,4 +1,5 @@
 import { normalizeDate, parseCount } from '../data/normalize';
+import { facebookReelsContext } from './context';
 
 export interface VisibleReel {
   reel_url: string;
@@ -23,18 +24,15 @@ export function reelIdFromUrl(raw: string): string | null {
   try {
     const url = new URL(raw, 'https://facebook.com');
     if (!['facebook.com', 'www.facebook.com', 'm.facebook.com', 'web.facebook.com'].includes(url.hostname)) return null;
-    const match = url.pathname.match(/^\/(?:reel|reels)\/(\d+)\/?$/i) ||
-      url.pathname.match(/^\/[^/]+\/reels\/(\d+)\/?$/i);
+    const match = url.pathname.match(/^\/(?:reel|reels|videos)\/(\d+)\/?$/i) ||
+      url.pathname.match(/^\/[^/]+\/(?:reels|videos)\/(\d+)\/?$/i) ||
+      url.pathname.match(/^\/people\/[^/]+\/\d+\/(?:reels|videos)\/(\d+)\/?$/i);
     return match?.[1] || null;
   } catch { return null; }
 }
 
 export function isReelsTab(raw: string): boolean {
-  try {
-    const url = new URL(raw);
-    return ['facebook.com', 'www.facebook.com', 'm.facebook.com', 'web.facebook.com'].includes(url.hostname) &&
-      /^\/[^/]+\/reels\/?$/i.test(url.pathname);
-  } catch { return false; }
+  return facebookReelsContext(raw)?.isReelsTab === true;
 }
 
 export function parsePublishedValue(raw: string | null | undefined): string | null {

@@ -1,25 +1,25 @@
-# Chuẩn bị phát hành FFB Lens 0.5.1
+# FFB Lens 0.6.1 Release Checklist
 
-## Trạng thái hiện tại
+## Current status
 
-- Có mã nguồn MV3, icon 16/48/128 px, Side Panel, tệp mẫu, trang quyền riêng tư trong extension và chính sách quyền riêng tư nháp để đăng công khai.
-- Gói extension nằm ở `release/ffb-lens-0.5.1.zip` sau khi chạy lệnh đóng gói. Gói không chứa `node_modules`, mã nguồn TypeScript hoặc khóa truy cập.
-- Cần kiểm thử thực tế trên tab Reels của nhiều Page vì Meta có thể thay đổi cấu trúc DOM; bản build chưa được xác minh end-to-end trên phiên Facebook đăng nhập thực.
+- The MV3 source, 16/48/128 px icons, side panel, sample file, in-extension privacy pages, and a draft public privacy policy are present.
+- Running the package command creates `release/ffb-lens-0.6.1.zip`. The ZIP excludes `node_modules`, TypeScript source, and access keys.
+- Real-world testing is still needed on the Reels tabs of multiple Pages and profiles because Meta can change the DOM or response structure. This build has not been verified end to end on a logged-in Facebook profile in this environment.
 
-## Gate trước khi tải lên Chrome Web Store
+## Checks before Chrome Web Store submission
 
-1. Chạy `npm ci`, `npm test`, `npm run build`, rồi kiểm tra `dist/manifest.json` và gói ZIP.
-2. Thử trên Chrome tại tab Reels của nhiều Page: cấp quyền Facebook khi bấm Quét lần đầu, xác nhận tab tải lại một lần, quét 10/30 lần cuộn, dừng sớm, kiểm tra URL, ngày đăng, likes và comments của vài Reel bằng mắt và đối chiếu SortLens. Chuyển Tiếng Việt/English khi đang quét và sau khi có kết quả; đóng/mở Side Panel để kiểm tra lựa chọn ngôn ngữ, mở trang quyền riêng tư ở cả hai ngôn ngữ. Kiểm tra dòng trạng thái báo bao nhiêu Reel có dữ liệu Facebook, trường thiếu, loại trùng, lọc và đóng/mở Side Panel. Thử cả trường hợp từ chối quyền, mở panel ở tab khác rồi chuyển sang Facebook. Thử thêm CSV mẫu và xuất CSV/XLSX.
-3. Xác minh điều kiện được phép tự động thu thập từ Meta trước khi dùng rộng rãi hoặc phát hành. Chuẩn bị ảnh chụp màn hình và mô tả listing nêu rõ addon đọc DOM và phản hồi Reel đã tải trong tab, số liệu có thể làm tròn và phạm vi quét có giới hạn. Không dùng dữ liệu mẫu như số liệu thật.
-4. Đăng **chính sách quyền riêng tư** lên một URL công khai do nhà phát hành kiểm soát. Tệp `docs/privacy.md` là bản nháp để duyệt; đường dẫn tệp cục bộ không thay thế URL trong Developer Dashboard. [Chrome Web Store yêu cầu chính sách cho extension xử lý dữ liệu người dùng, kể cả khi lưu cục bộ](https://developer.chrome.com/docs/webstore/program-policies/user-data-faq/).
-5. Điền Privacy practices và các thông tin listing phù hợp với hành vi thực tế. [Tài liệu Google](https://developer.chrome.com/docs/webstore/cws-dashboard-privacy/) yêu cầu các khai báo này nhất quán với chính sách quyền riêng tư.
-6. Chủ tài khoản nhà phát hành tự kiểm tra thông tin liên hệ, tài khoản phát triển và quy trình duyệt. [Chrome Web Store nhận tệp ZIP qua Developer Dashboard](https://developer.chrome.com/docs/webstore/publish/). Chưa tải lên hay xuất bản trong bước này.
+1. Run `npm ci`, `npm test`, and `npm run build`, then inspect `dist/manifest.json` and the ZIP package.
+2. Test Reels tabs from several Pages and profiles in Chrome. Cover `/<username>/reels/`, `profile.php?id=<id>&sk=reels_tab`, and `/people/<name>/<id>/reels/`. Confirm that **Open Reels tab** generates `sk=reels_tab` for numeric profiles and that two profile IDs remain separate. Grant Facebook access on the first scan; verify that the tab reloads once, 10/30-scroll scans, early stopping, URLs, posted dates, likes, and comments. Switch between Vietnamese and English during and after a scan, reopen the side panel to confirm language persistence, and open both privacy pages. Check coverage and missing fields in the status line, deduplication, and filters. Also test permission denial, opening the panel on another tab before returning to Facebook, the sample CSV, and CSV/XLSX exports.
+3. Confirm the conditions for permitted automated collection from Meta before broad use or release. Prepare screenshots and a store description stating that the extension reads the DOM and Reel responses already loaded in the tab, metrics can be rounded, and scan coverage is bounded. Do not present sample data as real data.
+4. Publish the **privacy policy** at a public URL controlled by the publisher. `docs/privacy.md` is a draft for review; a local file path is not a substitute for the Developer Dashboard URL. [Chrome Web Store requires a privacy policy for extensions handling user data, even when data stays local](https://developer.chrome.com/docs/webstore/program-policies/user-data-faq/).
+5. Complete Privacy practices and listing fields to match actual behavior. [Google's guidance](https://developer.chrome.com/docs/webstore/cws-dashboard-privacy/) requires consistency with the privacy policy.
+6. The publisher should review contact details, the developer account, and the review process. [Chrome Web Store accepts a ZIP through the Developer Dashboard](https://developer.chrome.com/docs/webstore/publish/). This checklist does not publish or upload the extension.
 
-## Lệnh đóng gói
+## Packaging commands
 
 ```bash
 npm run build
 npm run package
 ```
 
-Sau khi build lại, hãy tạo ZIP mới để tránh tải phiên bản cũ. Nếu thêm Facebook connector sau này, phải đánh giá lại quyền, chính sách dữ liệu, phạm vi thông báo cho người dùng và mô tả listing trước khi phát hành.
+Create a new ZIP after rebuilding so an outdated version is not submitted. Before adding a Facebook connector, reassess permissions, data policy, user notices, and the store description.

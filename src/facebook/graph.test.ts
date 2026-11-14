@@ -16,6 +16,13 @@ describe('Page Reels browser response parser', () => {
   it('ignores unrelated data and malformed lines', () => {
     expect(parsePageReelsResponse('not json\n{"data":{"viewer":{"id":"123"}}}')).toEqual([]);
   });
+  it('accepts a profile Reel returned with a videos permalink', () => {
+    const body = JSON.stringify({ data: { user: { aggregated_fb_shorts: { edges: [
+      { node: { id: '987654321', permalink_url: 'https://www.facebook.com/creator.name/videos/987654321/',
+        play_count_reduced: '1.2K', unified_reactors: { count: 30 }, total_comment_count: 2 } }
+    ] } } } });
+    expect(parsePageReelsResponse(body)[0]).toMatchObject({ reel_id: '987654321', views: 1200, likes: 30, comments: 2 });
+  });
   it('merges deferred metrics into the matching Reel without dropping its URL', () => {
     const response = [
       'for (;;);' + JSON.stringify({ data: { aggregated_fb_shorts: { edges: [

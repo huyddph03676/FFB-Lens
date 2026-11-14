@@ -7,6 +7,7 @@ import { toXlsx } from './data/xlsx';
 import { isFacebookPageHost, manualPageBatch, pageContextFromTab } from './data/manual-page';
 import { normalizeUrl } from './data/normalize';
 import { isReelsTab, type VisibleReel } from './facebook/extract';
+import { facebookReelsContext } from './facebook/context';
 import { englishUi, translateError, type Language } from './i18n';
 import type { DateRange, Filters, Reel, SortKey } from './types';
 
@@ -47,16 +48,16 @@ app.innerHTML = `
   </header>
   <main>
     <section class="hero">
-      <div class="eyebrow">FACEBOOK PAGE / REELS</div>
-      <h1>Phân tích Reels<br><em>ngay khi xem Page.</em></h1>
-      <p>Mở tab Reels của Page, bấm Quét để cuộn và xếp hạng những Reel Facebook tải trên tab.</p>
+      <div class="eyebrow">FACEBOOK PAGE / PROFILE REELS</div>
+      <h1>Phân tích Reels<br><em>ngay trên Facebook.</em></h1>
+      <p>Mở mục Reels của Page hoặc trang cá nhân, bấm Quét để cuộn và xếp hạng các Reel đã tải.</p>
     </section>
     <section class="import-card page-workspace">
-      <div class="section-head"><div><div class="eyebrow">01 / PAGE ĐANG XEM</div><h2>Quét tab Reels</h2></div><div class="step-icon">↗</div></div>
-      <label class="field-label" for="page-url">URL Facebook Page</label>
-      <input id="page-url" type="url" placeholder="https://www.facebook.com/tenpage/reels/" spellcheck="false" />
-      <div class="page-actions"><button id="detect-page" class="button ghost" type="button">Nhận Page từ tab</button><a id="open-page" class="button ghost" target="_blank" rel="noopener noreferrer" hidden>Mở tab Reels ↗</a></div>
-      <p id="page-status" class="field-help">Mở tab Reels của Page rồi bấm biểu tượng FFB Lens. Có thể nhập URL Page thủ công.</p>
+      <div class="section-head"><div><div class="eyebrow">01 / TÀI KHOẢN ĐANG XEM</div><h2>Quét mục Reels</h2></div><div class="step-icon">↗</div></div>
+      <label class="field-label" for="page-url">URL Page hoặc trang cá nhân</label>
+      <input id="page-url" type="url" placeholder="https://www.facebook.com/ten-tai-khoan/reels/" spellcheck="false" />
+      <div class="page-actions"><button id="detect-page" class="button ghost" type="button">Nhận tài khoản từ tab</button><a id="open-page" class="button ghost" target="_blank" rel="noopener noreferrer" hidden>Mở mục Reels ↗</a></div>
+      <p id="page-status" class="field-help">Mở mục Reels của Page hoặc trang cá nhân rồi bấm biểu tượng FFB Lens.</p>
       <div class="scan-controls"><label class="control"><span>GIỚI HẠN LẦN CUỘN</span><select id="scan-steps"><option value="10">10 lần</option><option value="30" selected>30 lần</option><option value="60">60 lần</option><option value="100">100 lần</option></select></label><button id="scan-start" class="button primary" type="button">Quét Reels trên tab</button><button id="scan-stop" class="button ghost" type="button" disabled>Dừng</button></div>
       <div id="scan-status" class="scan-status" role="status" aria-live="polite">Chưa quét. Chrome sẽ hỏi quyền đọc tab Facebook khi bạn bấm Quét lần đầu; không cần mở DevTools.</div>
       <details class="secondary-import"><summary>Ghi một Reel thủ công</summary><form id="manual-form" class="manual-form">
@@ -68,7 +69,7 @@ app.innerHTML = `
         <label class="control"><span>NGÀY ĐĂNG · TÙY CHỌN</span><input id="manual-date" type="date" /></label>
         <button class="button primary" type="submit">+ Ghi Reel và xếp hạng</button>
       </form></details>
-      <p class="field-help">Số liệu có thể được Facebook làm tròn. Chỉ số không hiển thị sẽ để trống; kết quả là Top của Reel đã đọc, không phải toàn bộ lịch sử Page.</p>
+      <p class="field-help">Số liệu có thể được Facebook làm tròn. Chỉ số không hiển thị sẽ để trống; kết quả là Top của Reel đã đọc, không phải toàn bộ lịch sử tài khoản.</p>
       <details class="secondary-import"><summary>Nhập dữ liệu hoặc xem mẫu</summary><div class="import-actions"><button id="import-button" class="button ghost" type="button">Nhập CSV</button><button id="sample-button" class="button ghost" type="button">Xem dữ liệu mẫu</button><input id="file-input" type="file" accept=".csv,text/csv,text/plain" hidden /></div></details>
       <div id="notice" class="notice" role="status" aria-live="polite"></div>
     </section>
@@ -95,12 +96,12 @@ app.innerHTML = `
       </div>
       <div id="date-controls" class="date-controls" hidden><label>Từ ngày<input id="from" type="date" /></label><label>Đến ngày<input id="to" type="date" /></label></div>
       <div class="advanced-filters">
-        <label class="control"><span>PAGE</span><select id="page-filter"><option value="">Tất cả Page</option></select></label>
+        <label class="control"><span>TÀI KHOẢN</span><select id="page-filter"><option value="">Tất cả tài khoản</option></select></label>
         <label class="control"><span>NGUỒN DỮ LIỆU</span><select id="source-filter"><option value="">Tất cả nguồn</option></select></label>
         <label class="control"><span>VIEWS TỐI THIỂU</span><input id="min-views" type="number" min="0" step="1" placeholder="Không giới hạn" /></label>
       </div>
       <div id="scope-detail" class="scope-detail"></div>
-      <div class="baseline-note">Outlier = views ÷ trung vị views của cùng Page trong kỳ đã chọn. Cần ít nhất 5 Reel có views và trung vị &gt; 0. Tìm kiếm, nguồn, ngưỡng views và Top không đổi nhóm so sánh.</div>
+      <div class="baseline-note">Outlier = views ÷ trung vị views của cùng tài khoản trong kỳ đã chọn. Cần ít nhất 5 Reel có views và trung vị &gt; 0. Tìm kiếm, nguồn, ngưỡng views và Top không đổi nhóm so sánh.</div>
       <div class="toolbar"><span id="data-count">0 Reels đã lưu</span><div><button id="csv-button" class="text-button" disabled>↓ CSV</button><button id="xlsx-button" class="text-button" disabled>↓ XLSX</button><button id="clear-button" class="text-button danger" disabled>Xóa dữ liệu</button></div></div>
       <div id="list" class="reel-list"></div>
     </section>
@@ -179,12 +180,12 @@ function updatePageContext() {
   const status = el('page-status');
   const link = el<HTMLAnchorElement>('open-page');
   if (pageUrl) {
-    const name = new URL(pageUrl).pathname.split('/').filter(Boolean)[0];
-    status.textContent = t(`Page: ${name}. Bấm Quét khi tab này đang mở ở mục Reels.`, `Page: ${name}. Click Scan while this tab shows Reels.`);
-    link.href = `${pageUrl.replace(/\/$/, '')}/reels/`;
+    const context = facebookReelsContext(pageUrl)!;
+    status.textContent = t(`Tài khoản: ${context.label}. Bấm Quét khi tab này đang mở mục Reels.`, `Account: ${context.label}. Click Scan when this tab shows Reels.`);
+    link.href = context.reelsUrl;
     link.hidden = false;
   } else {
-    status.textContent = pageUrl === null ? t('URL này không phải Page Facebook hợp lệ.', 'This is not a valid Facebook Page URL.') : t('Mở tab Reels của Page rồi bấm biểu tượng FFB Lens. Có thể nhập URL Page thủ công.', 'Open a Page’s Reels tab and click FFB Lens. You can also enter a Page URL.');
+    status.textContent = pageUrl === null ? t('URL này không phải Page hoặc trang cá nhân Facebook hợp lệ.', 'This is not a valid Facebook Page or profile URL.') : t('Mở mục Reels của Page hoặc trang cá nhân rồi bấm biểu tượng FFB Lens.', 'Open a Page or profile Reels tab and click FFB Lens.');
     link.hidden = true;
   }
 }
@@ -194,7 +195,7 @@ async function detectActivePage(silent = false) {
     if (typeof chrome === 'undefined' || !chrome.tabs) throw new Error('Chức năng này chỉ hoạt động trong Chrome Extension.');
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     const pageUrl = pageContextFromTab(tab?.url || '');
-    if (!pageUrl) throw new Error('Hãy mở tab Reels của Facebook Page rồi bấm lại biểu tượng addon.');
+    if (!pageUrl) throw new Error('Hãy mở mục Reels của Page hoặc trang cá nhân rồi bấm lại biểu tượng addon.');
     el<HTMLInputElement>('page-url').value = pageUrl;
     updatePageContext();
     const option = Array.from(el<HTMLSelectElement>('page-filter').options).find(item => item.value === `url:${pageUrl}`);
@@ -208,7 +209,7 @@ async function detectActiveReel() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     const url = normalizeUrl(tab?.url || '');
     if (!url || !isFacebookPageHost(new URL(url).hostname) ||
-        !/^\/(?:reel|reels)\/\d+\/?$/i.test(new URL(url).pathname)) {
+        !/^\/(?:reel|reels|videos)\/\d+\/?$/i.test(new URL(url).pathname)) {
       throw new Error('Tab đang mở chưa phải URL của một Reel Facebook.');
     }
     el<HTMLInputElement>('manual-url').value = url;
@@ -250,9 +251,9 @@ async function startScan() {
     const granted = await chrome.permissions.request({ origins: ['https://*.facebook.com/*'] });
     if (!granted) throw new Error('Chrome chưa được cấp quyền đọc tab Facebook. Bấm Quét và cho phép để tiếp tục.');
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id || !tab.url || !isReelsTab(tab.url)) throw new Error('Hãy mở mục Reels của Facebook Page rồi bấm biểu tượng addon trên chính tab đó.');
+    if (!tab?.id || !tab.url || !isReelsTab(tab.url)) throw new Error('Hãy mở mục Reels của Page hoặc trang cá nhân rồi bấm biểu tượng addon trên chính tab đó.');
     const pageUrl = pageContextFromTab(tab.url);
-    if (!pageUrl) throw new Error('Không nhận diện được Page từ tab Reels.');
+    if (!pageUrl) throw new Error('Không nhận diện được tài khoản từ tab Reels.');
     const registered = await chrome.scripting.getRegisteredContentScripts({ ids: ['ffb-facebook-observer'] });
     if (!registered.length) await chrome.scripting.registerContentScripts([{
       id: 'ffb-facebook-observer', js: ['facebook-observer.js'], matches: ['https://*.facebook.com/*'],
@@ -347,7 +348,8 @@ function populateFilter(id: string, options: [string, string][], allLabel: strin
 
 function sourceLabel(source: string): string {
   if (source === 'Facebook · tab Reels') return t(source, 'Facebook · Reels tab');
-  if (source === 'Nhập khi xem Page') return t(source, 'Added from Page');
+  if (source === 'Nhập khi xem Page') return t(source, 'Added from account');
+  if (source === 'Nhập từ Facebook') return t(source, 'Added from Facebook');
   return source;
 }
 
@@ -359,7 +361,7 @@ function refreshFilterOptions() {
     if (key && !pages.has(key)) pages.set(key, reel.page_name || reel.page_url);
     if (reel.source) sources.add(reel.source);
   });
-  populateFilter('page-filter', [...pages].sort((a, b) => a[1].localeCompare(b[1], language)), t('Tất cả Page', 'All Pages'));
+  populateFilter('page-filter', [...pages].sort((a, b) => a[1].localeCompare(b[1], language)), t('Tất cả tài khoản', 'All accounts'));
   populateFilter('source-filter', [...sources].sort((a, b) => a.localeCompare(b, language)).map(source => [source, sourceLabel(source)]), t('Tất cả nguồn', 'All sources'));
 }
 
@@ -409,7 +411,7 @@ function render() {
     empty.className = 'empty';
     addText(empty, 'div', 'empty-icon', '◌');
     addText(empty, 'strong', '', allReels.length ? t('Không có Reel phù hợp', 'No matching Reels') : t('Chưa có dữ liệu Reels', 'No Reel data yet'));
-    addText(empty, 'p', '', allReels.length ? t('Thử đổi từ khóa hoặc bộ lọc thời gian.', 'Try another search or time filter.') : t('Mở tab Reels của Page và bấm Quét để bắt đầu.', 'Open a Page’s Reels tab and click Scan to start.'));
+    addText(empty, 'p', '', allReels.length ? t('Thử đổi từ khóa hoặc bộ lọc thời gian.', 'Try another search or time filter.') : t('Mở mục Reels của Page hoặc trang cá nhân và bấm Quét để bắt đầu.', 'Open a Page or profile Reels tab and click Scan to start.'));
     list.append(empty);
     return;
   }
@@ -489,9 +491,9 @@ el<HTMLFormElement>('manual-form').addEventListener('submit', async event => {
     el<HTMLFormElement>('manual-form').reset();
     el<HTMLInputElement>('manual-url').focus();
     notice(
-      result.newCount ? 'Đã ghi Reel. Bảng xếp hạng của Page đã cập nhật.' : 'Reel này đã có; dữ liệu được cập nhật nếu bản mới đầy đủ hơn.',
+      result.newCount ? 'Đã ghi Reel. Bảng xếp hạng của tài khoản đã cập nhật.' : 'Reel này đã có; dữ liệu được cập nhật nếu bản mới đầy đủ hơn.',
       false,
-      result.newCount ? 'Reel saved. The Page rankings have been updated.' : 'This Reel already exists; its data was updated if the new record was more complete.'
+      result.newCount ? 'Reel saved. The account rankings have been updated.' : 'This Reel already exists; its data was updated if the new record was more complete.'
     );
   } catch (error) { notice(error instanceof Error ? error.message : 'Không thể ghi Reel.', true); }
 });

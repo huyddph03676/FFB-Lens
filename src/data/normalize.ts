@@ -1,4 +1,5 @@
 import type { Reel } from '../types';
+import { facebookReelsContext } from '../facebook/context';
 
 const multipliers: Record<string, number> = {
   k: 1_000, nghìn: 1_000, ngan: 1_000, ngàn: 1_000,
@@ -48,6 +49,13 @@ export function normalizeUrl(value: string): string | null {
 }
 
 export function normalizePageUrl(value: string): string | null {
+  const facebookContext = facebookReelsContext(value);
+  if (facebookContext) return facebookContext.contextUrl;
+  try {
+    const original = new URL(value.trim());
+    if (['facebook.com', 'www.facebook.com', 'm.facebook.com', 'web.facebook.com'].includes(original.hostname) &&
+        original.pathname.toLowerCase() === '/profile.php') return null;
+  } catch { return null; }
   const normalized = normalizeUrl(value);
   if (!normalized) return null;
   const url = new URL(normalized);

@@ -1,3 +1,24 @@
+# Dependencies and generated extension packages
 node_modules/
 dist/
+release/
+coverage/
+*.tsbuildinfo
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+/.aws/
+/.codex/
+/.agents/
+
+# Logs, caches, and editor files
+*.log
+.cache/
+.vite/
 .DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

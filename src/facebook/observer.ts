@@ -1,5 +1,6 @@
 import { isReelsTab, type VisibleReel } from './extract';
 import { parsePageReelsResponse } from './graph';
+import { facebookReelsContext } from './context';
 
 type ObserverWindow = Window & { __ffbLensObserverInstalled?: boolean };
 const page = window as ObserverWindow;
@@ -7,7 +8,7 @@ const page = window as ObserverWindow;
 if (!page.__ffbLensObserverInstalled) {
   page.__ffbLensObserverInstalled = true;
   const stored = new Map<string, VisibleReel>();
-  let currentPagePath = location.pathname;
+  let currentContext = facebookReelsContext(location.href)?.contextUrl || '';
   const xhrUrls = new WeakMap<XMLHttpRequest, string>();
   const graphUrl = (url: string) => url.includes('/api/graphql/');
 
@@ -18,7 +19,8 @@ if (!page.__ffbLensObserverInstalled) {
 
   function observe(body: string) {
     if (!isReelsTab(location.href) || body.length > 8_000_000 || !body.includes('aggregated_fb_shorts')) return;
-    if (currentPagePath !== location.pathname) { stored.clear(); currentPagePath = location.pathname; }
+    const context = facebookReelsContext(location.href)?.contextUrl || '';
+    if (currentContext !== context) { stored.clear(); currentContext = context; }
     const changed: VisibleReel[] = [];
     for (const reel of parsePageReelsResponse(body)) {
       const old = stored.get(reel.reel_id);
@@ -43,7 +45,8 @@ if (!page.__ffbLensObserverInstalled) {
   window.addEventListener('message', event => {
     if (event.source === window && event.origin === location.origin &&
       event.data?.source === 'FFB_LENS_CONTENT' && event.data.type === 'SNAPSHOT_REQUEST') {
-      if (currentPagePath !== location.pathname) { stored.clear(); currentPagePath = location.pathname; }
+      const context = facebookReelsContext(location.href)?.contextUrl || '';
+      if (currentContext !== context) { stored.clear(); currentContext = context; }
       deliver([...stored.values()]);
     }
   });

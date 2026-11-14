@@ -19,6 +19,11 @@ describe('Page workspace input', () => {
     expect(pageContextFromTab('https://facebook.com/groups/example')).toBeNull();
     expect(pageContextFromTab('https://example.com/fearlessmotivationofficial/reels')).toBeNull();
   });
+  it('records a Reel under the numeric profile ID instead of the shared profile.php path', () => {
+    const batch = manualPageBatch({ ...input, pageUrl: 'https://www.facebook.com/profile.php?id=100012345678901&sk=reels_tab' }, '2026-11-14T00:00:00.000Z');
+    expect(batch.reels[0].page_url).toBe('https://facebook.com/profile.php?id=100012345678901');
+    expect(batch.reels[0].page_name).toBe('Profile 100012345678901');
+  });
 
   it('records only values supplied by the user with partial coverage', () => {
     const batch = manualPageBatch(input, '2026-11-14T00:00:00.000Z');

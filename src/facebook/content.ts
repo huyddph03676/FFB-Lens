@@ -54,7 +54,7 @@ function publishedAt(card: HTMLElement): string | null {
 
 function collect(): VisibleReel[] {
   const byId = new Map<string, VisibleReel>();
-  const links = document.querySelectorAll<HTMLAnchorElement>('a[href*="/reel/"] , a[href*="/reels/"]');
+  const links = document.querySelectorAll<HTMLAnchorElement>('a[href*="/reel/"], a[href*="/reels/"], a[href*="/videos/"]');
   for (const link of Array.from(links).slice(0, 3000)) {
     const style = getComputedStyle(link);
     if (style.display === 'none' || style.visibility === 'hidden' || link.closest('[aria-hidden="true"]')) continue;
@@ -91,7 +91,7 @@ function collect(): VisibleReel[] {
 }
 
 function scrollTarget(): HTMLElement {
-  const link = document.querySelector<HTMLAnchorElement>('a[href*="/reel/"], a[href*="/reels/"]');
+  const link = document.querySelector<HTMLAnchorElement>('a[href*="/reel/"], a[href*="/reels/"], a[href*="/videos/"]');
   let node = link?.parentElement || null;
   while (node && node !== document.body) {
     const style = getComputedStyle(node);
@@ -104,7 +104,7 @@ function scrollTarget(): HTMLElement {
 async function waitForReels(scan: ScanState): Promise<void> {
   const deadline = Date.now() + 15_000;
   while (!scan.stopped && Date.now() < deadline) {
-    if (state.metadata.size || Array.from(document.querySelectorAll<HTMLAnchorElement>('a[href*="/reel/"], a[href*="/reels/"]')).some(link => reelIdFromUrl(link.href))) return;
+    if (state.metadata.size || Array.from(document.querySelectorAll<HTMLAnchorElement>('a[href*="/reel/"], a[href*="/reels/"], a[href*="/videos/"]')).some(link => reelIdFromUrl(link.href))) return;
     await new Promise(resolve => setTimeout(resolve, 300));
   }
 }
@@ -129,7 +129,7 @@ async function run(scan: ScanState, maxSteps: number) {
       const current = collect();
       const target = scrollTarget();
       diagnostics = {
-        links: document.querySelectorAll('a[href*="/reel/"], a[href*="/reels/"]').length,
+        links: document.querySelectorAll('a[href*="/reel/"], a[href*="/reels/"], a[href*="/videos/"]').length,
         recognized: current.length,
         withViews: current.filter(reel => reel.views !== null).length,
         withLikes: current.filter(reel => reel.likes !== null).length,
