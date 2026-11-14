@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/png" href="./icons/icon-16.png" />
+  <title>Privacy — FFB Lens</title>
+  <style>
+    :root{font-family:Arial,sans-serif;color:#e9f0e8;background:#0c1513}body{max-width:720px;margin:auto;padding:35px 22px;line-height:1.65}h1,h2{color:#d1fa67}h1{font-size:27px}h2{font-size:18px;margin-top:30px}p,li{color:#c2d0c2}a{color:#d1fa67}small{color:#93a694}
+  </style>
+</head>
+<body>
+  <h1>Privacy — FFB Lens</h1>
+  <small>Version 0.5.1 · updated November 14, 2026 · <a href="./privacy.html" lang="vi">Tiếng Việt</a></small>
+  <h2>Data on your device</h2>
+  <p>When you click Scan, FFB Lens reloads the Reels tab once, reads Reel cards and Reel fields in GraphQL responses Facebook has already loaded in that tab, and scrolls within your chosen limit. Available URLs, captions, posted dates, and metrics are saved in IndexedDB on your device. Raw responses are not saved. You can also add Reels manually or import a CSV.</p>
+  <h2>Sharing and access</h2>
+  <p>FFB Lens has no server, analytics, account, or tracking code. The extension does not send collected data to third parties or make its own requests to Facebook endpoints. It uses the <code>sidePanel</code>, <code>activeTab</code>, and <code>scripting</code> permissions. Chrome asks for Facebook site access when you first scan; you can revoke that access in extension settings. The extension observes Reel responses already loaded and reads the DOM of the Reels tab you selected. It does not read cookies, passwords, or browsing history.</p>
+  <h2>Delete and export</h2>
+  <p>You can export the currently displayed list to CSV or XLSX. The Clear data button deletes all saved Reels from the extension’s IndexedDB after confirmation. There is no server copy to restore.</p>
+  <p>Results cover only Reels loaded and recognized during a scan. Facebook may round or omit metrics. Automated collection must comply with Meta’s terms and your access rights.</p>
+</body>
+</html>

@@ -1,0 +1,35 @@
+import { describe, expect, it } from 'vitest';
+import { parsePageReelsResponse } from './graph';
+
+describe('Page Reels browser response parser', () => {
+  it('reads only Reel fields from a browser-delivered response', () => {
+    const body = JSON.stringify({ data: { page: { aggregated_fb_shorts: { edges: [
+      { profile_reel_node: { node: { id: '2088464188452071', permalink_url: 'https://www.facebook.com/reel/2088464188452071/',
+        creation_time: 1794448800, play_count_reduced: '45K', total_comment_count: 9,
+        unified_reactors: { count: 734 }, message: { text: 'Most people are not where they want to be' } } } }
+    ] } } } });
+    expect(parsePageReelsResponse(body)[0]).toMatchObject({
+      reel_id: '2088464188452071', views: 45_000, likes: 734, comments: 9,
+      shares: null, caption: 'Most people are not where they want to be'
+    });
+  });
+  it('ignores unrelated data and malformed lines', () => {
+    expect(parsePageReelsResponse('not json\n{"data":{"viewer":{"id":"123"}}}')).toEqual([]);
+  });
+  it('merges deferred metrics into the matching Reel without dropping its URL', () => {
+    const response = [
+      'for (;;);' + JSON.stringify({ data: { aggregated_fb_shorts: { edges: [
+        { profile_reel_node: { node: { id: '2088464188452071', permalink_url: 'https://www.facebook.com/reel/2088464188452071/' } } }
+      ] } } }),
+      JSON.stringify({ path: ['data', 'aggregated_fb_shorts', 'edges', 0, 'profile_reel_node', 'node'], data: {
+        creation_time: 1794448800, unified_reactors: { count: 734 }, total_comment_count: 9,
+        play_count_reduced: '45K', message: { text: 'A Reel caption' }
+      } })
+    ].join('\n');
+    expect(parsePageReelsResponse(response)).toEqual([{
+      reel_id: '2088464188452071', reel_url: 'https://facebook.com/reel/2088464188452071',
+      caption: 'A Reel caption', views: 45_000, likes: 734, comments: 9, shares: null,
+      published_at: '2026-11-12T02:00:00.000Z'
+    }]);
+  });
+});

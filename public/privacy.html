@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/png" href="./icons/icon-16.png" />
+  <title>Quyền riêng tư — FFB Lens</title>
+  <style>
+    :root{font-family:Arial,sans-serif;color:#e9f0e8;background:#0c1513}body{max-width:720px;margin:auto;padding:35px 22px;line-height:1.65}h1,h2{color:#d1fa67}h1{font-size:27px}h2{font-size:18px;margin-top:30px}p,li{color:#c2d0c2}a{color:#d1fa67}small{color:#93a694}
+  </style>
+</head>
+<body>
+  <h1>Quyền riêng tư — FFB Lens</h1>
+  <small>Phiên bản 0.5.1 · cập nhật 14/11/2026 · <a href="./privacy-en.html" lang="en">English</a></small>
+  <h2>Dữ liệu trên thiết bị</h2>
+  <p>Khi bạn bấm Quét, FFB Lens tải lại tab Reels một lần, đọc thẻ Reel và các trường Reel trong phản hồi GraphQL Facebook đã tải trên tab, rồi tự cuộn trong giới hạn đã chọn. URL, caption, ngày đăng và số liệu có được lưu trong IndexedDB trên thiết bị; phản hồi thô không được lưu. Bạn cũng có thể nhập tay hoặc CSV.</p>
+  <h2>Chia sẻ và quyền truy cập</h2>
+  <p>FFB Lens không có máy chủ, analytics, tài khoản hoặc mã theo dõi. Mã extension không gửi dữ liệu đã đọc cho bên thứ ba và không tự gọi endpoint Facebook. Extension yêu cầu <code>sidePanel</code>, <code>activeTab</code> và <code>scripting</code>. Khi bạn bấm Quét lần đầu, Chrome hỏi thêm quyền truy cập trang Facebook; quyền này có thể được Chrome giữ lại cho các lần sau và bạn có thể thu hồi trong phần quản lý extension. Addon quan sát phản hồi Reel đã tải và đọc DOM của tab Reels được chọn; không đọc cookie, mật khẩu hoặc lịch sử duyệt web.</p>
+  <h2>Xóa và xuất dữ liệu</h2>
+  <p>Bạn có thể xuất danh sách đang hiển thị thành CSV/XLSX. Nút “Xóa dữ liệu” xóa toàn bộ bản ghi Reels trong IndexedDB của extension sau khi bạn xác nhận. Không có bản sao máy chủ để khôi phục.</p>
+  <p>Kết quả chỉ phản ánh Reel đã tải và được nhận diện trong lần quét. Số liệu có thể được Facebook làm tròn hoặc thiếu. Việc dùng cơ chế thu thập tự động cần phù hợp với điều khoản Meta và quyền truy cập của bạn.</p>
+</body>
+</html>
