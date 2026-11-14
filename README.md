@@ -47,7 +47,7 @@ npm run package
 3. Open the Reels tab of the Page or profile you want to analyze. Recognized URL forms include `facebook.com/<username>/reels/`, `facebook.com/profile.php?id=<id>&sk=reels_tab`, and `facebook.com/people/<name>/<id>/reels/`.
 4. Click the **FFB Lens** toolbar icon to open the side panel. The extension reads the account URL from the tab; use **Use account from tab** if needed.
 5. Select a limit of 10–100 scrolls, click **Scan Reels on tab**, and grant Facebook site access when Chrome asks for it the first time. The extension reloads the Reels tab once to capture data available when the page loads, then scrolls it. The side panel updates Reel counts, data coverage, and rankings during the scan. Click **Stop** to end early. DevTools and console commands are not needed.
-6. Choose **English** from the **Language** menu at the top of the side panel if desired. Use filters, statistics, or **Add a Reel manually** when metrics are missing. CSV import is under **Import data or view sample**.
+6. Choose **English** from the **Language** menu at the top of the side panel if desired. Selecting an **ACCOUNT** updates the **Page or profile URL** field and its Reels link; **All accounts** clears the field. Use filters, statistics, or **Add a Reel manually** when metrics are missing. CSV import is under **Import data or view sample**.
 
 `npm run dev` serves the UI in a browser for quick development. To test extension behavior, run `npm run build`, load `dist` in `chrome://extensions`, and click **Reload** on the extension card after each new build.
 

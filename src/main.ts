@@ -185,9 +185,19 @@ function updatePageContext() {
     link.href = context.reelsUrl;
     link.hidden = false;
   } else {
-    status.textContent = pageUrl === null ? t('URL này không phải Page hoặc trang cá nhân Facebook hợp lệ.', 'This is not a valid Facebook Page or profile URL.') : t('Mở mục Reels của Page hoặc trang cá nhân rồi bấm biểu tượng FFB Lens.', 'Open a Page or profile Reels tab and click FFB Lens.');
+    status.textContent = pageUrl === null
+      ? t('URL này không phải Page hoặc trang cá nhân Facebook hợp lệ.', 'This is not a valid Facebook Page or profile URL.')
+      : el<HTMLSelectElement>('page-filter').value.startsWith('name:')
+        ? t('Tài khoản đã chọn chưa có URL trong dữ liệu đã lưu.', 'The selected account has no URL in the saved data.')
+        : t('Mở mục Reels của Page hoặc trang cá nhân rồi bấm biểu tượng FFB Lens.', 'Open a Page or profile Reels tab and click FFB Lens.');
     link.hidden = true;
   }
+}
+
+function updateUrlFromAccountFilter() {
+  const selected = el<HTMLSelectElement>('page-filter').value;
+  el<HTMLInputElement>('page-url').value = selected.startsWith('url:') ? selected.slice(4) : '';
+  updatePageContext();
 }
 
 async function detectActivePage(silent = false) {
@@ -466,6 +476,7 @@ function download(name: string, blob: Blob) {
 el<HTMLButtonElement>('import-button').addEventListener('click', () => el<HTMLInputElement>('file-input').click());
 el<HTMLSelectElement>('language-select').addEventListener('change', event => applyLanguage((event.currentTarget as HTMLSelectElement).value === 'en' ? 'en' : 'vi'));
 el<HTMLInputElement>('page-url').addEventListener('input', updatePageContext);
+el<HTMLSelectElement>('page-filter').addEventListener('change', updateUrlFromAccountFilter);
 el<HTMLButtonElement>('detect-page').addEventListener('click', () => void detectActivePage());
 el<HTMLButtonElement>('detect-reel').addEventListener('click', () => void detectActiveReel());
 el<HTMLButtonElement>('scan-start').addEventListener('click', () => void startScan());
