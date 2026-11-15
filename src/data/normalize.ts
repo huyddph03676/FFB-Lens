@@ -1,5 +1,6 @@
 import type { Reel } from '../types';
 import { facebookReelsContext } from '../facebook/context';
+import { tiktokProfileContext } from '../tiktok/context';
 
 const multipliers: Record<string, number> = {
   k: 1_000, nghìn: 1_000, ngan: 1_000, ngàn: 1_000,
@@ -51,10 +52,13 @@ export function normalizeUrl(value: string): string | null {
 export function normalizePageUrl(value: string): string | null {
   const facebookContext = facebookReelsContext(value);
   if (facebookContext) return facebookContext.contextUrl;
+  const tiktokContext = tiktokProfileContext(value);
+  if (tiktokContext) return tiktokContext.contextUrl;
   try {
     const original = new URL(value.trim());
     if (['facebook.com', 'www.facebook.com', 'm.facebook.com', 'web.facebook.com'].includes(original.hostname) &&
         original.pathname.toLowerCase() === '/profile.php') return null;
+    if (['tiktok.com', 'www.tiktok.com', 'm.tiktok.com'].includes(original.hostname)) return null;
   } catch { return null; }
   const normalized = normalizeUrl(value);
   if (!normalized) return null;
@@ -65,10 +69,13 @@ export function normalizePageUrl(value: string): string | null {
 
 export function reelIdentity(reel: Pick<Reel, 'reel_id' | 'reel_url'>): string {
   const id = reel.reel_id.trim();
-  if (id) return `id:${id}`;
+  const platform = /^(?:https?:\/\/)?(?:www\.|m\.)?tiktok\.com\//iu.test(reel.reel_url) ? 'tiktok:' : '';
+  if (id) return `${platform}id:${id}`;
   const url = normalizeUrl(reel.reel_url) || reel.reel_url.trim();
   const match = url.match(/facebook\.com\/(?:reel|reels)\/([^/?#]+)/i);
-  return match ? `id:${match[1]}` : `url:${url}`;
+  if (match) return `id:${match[1]}`;
+  const tiktokMatch = url.match(/tiktok\.com\/@[\w.]+\/video\/(\d+)/iu);
+  return tiktokMatch ? `tiktok:id:${tiktokMatch[1]}` : `url:${url}`;
 }
 
 export function normalizeDate(value: string | null | undefined): string | null {

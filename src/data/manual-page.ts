@@ -2,13 +2,14 @@ import type { Reel } from '../types';
 import { normalizeDate, normalizeUrl, parseCount } from './normalize';
 import type { SourceBatch } from './sources';
 import { facebookReelsContext, isFacebookHost } from '../facebook/context';
+import { tiktokProfileContext, tiktokVideoFromUrl } from '../tiktok/context';
 
 export function isFacebookPageHost(host: string): boolean {
   return isFacebookHost(host);
 }
 
 export function pageContextFromTab(raw: string): string | null {
-  return facebookReelsContext(raw)?.contextUrl || null;
+  return facebookReelsContext(raw)?.contextUrl || tiktokProfileContext(raw)?.contextUrl || null;
 }
 
 export interface ManualReelInput {
@@ -30,17 +31,18 @@ function metric(raw: string, label: string): number | null {
 }
 
 export function manualPageBatch(input: ManualReelInput, collectedAt = new Date().toISOString()): SourceBatch {
-  const context = facebookReelsContext(input.pageUrl);
+  const context = facebookReelsContext(input.pageUrl) || tiktokProfileContext(input.pageUrl);
   const pageUrl = context?.contextUrl;
-  if (!pageUrl) throw new Error('Hãy mở mục Reels của Page hoặc trang cá nhân, hoặc nhập URL tài khoản hợp lệ.');
+  if (!pageUrl) throw new Error('Hãy nhập URL tài khoản Facebook hoặc hồ sơ TikTok hợp lệ.');
   const reelUrl = normalizeUrl(input.reelUrl);
-  if (!reelUrl || !isFacebookPageHost(new URL(reelUrl).hostname) ||
-      !/^\/(?:reel|reels|videos)\/\d+\/?$/i.test(new URL(reelUrl).pathname)) {
-    throw new Error('URL Reel phải có dạng facebook.com/reel/123456… hoặc facebook.com/videos/123456…');
-  }
+  const tiktokVideo = reelUrl ? tiktokVideoFromUrl(reelUrl) : null;
+  const facebookVideo = !!reelUrl && isFacebookPageHost(new URL(reelUrl).hostname) &&
+    /^\/(?:reel|reels|videos)\/\d+\/?$/i.test(new URL(reelUrl).pathname);
+  if (!reelUrl || (context && 'username' in context ? !tiktokVideo || tiktokVideo.username !== context.username : !facebookVideo))
+    throw new Error('URL video phải khớp tài khoản Facebook hoặc TikTok đã chọn.');
   const date = input.publishedAt.trim() ? normalizeDate(input.publishedAt) : null;
   if (input.publishedAt.trim() && !date) throw new Error('Ngày đăng không hợp lệ.');
-  const id = new URL(reelUrl).pathname.split('/').filter(Boolean)[1];
+  const id = tiktokVideo?.id || new URL(reelUrl).pathname.split('/').filter(Boolean)[1];
   const reel: Reel = {
     page_name: context.label,
     page_url: pageUrl,
@@ -53,7 +55,7 @@ export function manualPageBatch(input: ManualReelInput, collectedAt = new Date()
     shares: metric(input.shares, 'Chia sẻ'),
     published_at: date,
     collected_at: collectedAt,
-    source: 'Nhập từ Facebook'
+    source: tiktokVideo ? 'Nhập từ TikTok' : 'Nhập từ Facebook'
   };
   return {
     adapterId: 'manual_page',

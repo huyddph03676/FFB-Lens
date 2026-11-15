@@ -11,13 +11,13 @@
 </head>
 <body>
   <h1>Privacy — FFB Lens</h1>
-  <small>Version 0.6.3 · updated November 15, 2026 · <a href="./privacy.html" lang="vi">Tiếng Việt</a></small>
+  <small>Version 0.7.3 · updated November 15, 2026 · <a href="./privacy.html" lang="vi">Tiếng Việt</a></small>
   <h2>Data on your device</h2>
-  <p>When you click Scan on a Page or profile Reels tab, FFB Lens reloads the tab once, reads Reel cards and Reel fields in GraphQL responses Facebook has already loaded in that tab, and scrolls within your chosen limit. The account display name when available, URLs, captions, posted dates, and metrics are saved in IndexedDB on your device. Raw responses are not saved. You can also add Reels manually or import a CSV.</p>
+  <p>When you click Scan on a Facebook Reels tab or TikTok profile, FFB Lens reloads the tab once, reads video cards and video data already loaded in that tab, and scrolls within your chosen limit. The account display name when available, URLs, captions, posted dates, and metrics are saved in IndexedDB on your device. Raw responses are not saved. You can also add videos manually or import a CSV.</p>
   <h2>Sharing and access</h2>
-  <p>FFB Lens has no server, analytics, account, or tracking code. The extension does not send collected data to third parties or make its own requests to Facebook endpoints. It uses the <code>sidePanel</code>, <code>activeTab</code>, and <code>scripting</code> permissions. Chrome asks for Facebook site access when you first scan; you can revoke that access in extension settings. The extension observes Reel responses already loaded and reads the DOM of the Reels tab you selected. It does not read cookies, passwords, or browsing history.</p>
+  <p>FFB Lens has no server, analytics, account, or tracking code. The extension does not send collected data to third parties or make its own requests to Facebook or TikTok endpoints. It uses the <code>sidePanel</code>, <code>activeTab</code>, and <code>scripting</code> permissions. Scan asks for access to the selected platform. If Chrome has not exposed the tab URL, Use account from tab or Scan asks for Facebook and TikTok access to identify the tab. You can revoke access in extension settings. The extension observes video responses already loaded and reads the DOM of the tab you selected. It does not read cookies, passwords, or browsing history.</p>
   <h2>Delete and export</h2>
-  <p>You can export the currently displayed list to CSV or XLSX. The Clear data button deletes all saved Reels from the extension’s IndexedDB after confirmation. There is no server copy to restore.</p>
+  <p>You can export the currently displayed list to CSV or XLSX. After selecting an ACCOUNT and confirming, Delete account data removes all saved videos for that account from the extension’s IndexedDB. Other accounts remain stored. There is no server copy to restore.</p>
   <p>Results cover only Reels loaded and recognized during a scan. Facebook may round or omit metrics. Automated collection must comply with Meta’s terms and your access rights.</p>
 </body>
 </html>

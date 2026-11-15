@@ -5,10 +5,11 @@ import { dedupe } from './engine';
 import { normalizeDate, normalizePageUrl, normalizeUrl } from './normalize';
 import type { VisibleReel } from '../facebook/extract';
 import { isDisplayAccountName, mostCommonAccountName } from '../facebook/name';
+import { tiktokProfileContext, tiktokVideoFromUrl } from '../tiktok/context';
 
 export type Coverage = 'unverified' | 'partial' | 'verified_complete';
 export type AccessBasis = 'user_provided_file' | 'user_entered' | 'browser_visible_user_initiated' | 'approved_api' | 'licensed_provider';
-export type ViewsMetric = 'user_supplied_views' | 'facebook_displayed_views' | 'facebook_reel_plays' | 'content_library_views';
+export type ViewsMetric = 'user_supplied_views' | 'facebook_displayed_views' | 'tiktok_displayed_views' | 'facebook_reel_plays' | 'content_library_views';
 
 export interface SourceBatch {
   adapterId: string;
@@ -75,6 +76,33 @@ export function browserVisibleBatch(pageUrl: string, visible: VisibleReel[], col
   };
 }
 
+export function tiktokVisibleBatch(pageUrl: string, visible: VisibleReel[], collectedAt = new Date().toISOString()): SourceBatch {
+  const context = tiktokProfileContext(pageUrl);
+  if (!context) throw new Error('URL hồ sơ TikTok không hợp lệ.');
+  const matching = visible.filter(item => {
+    const video = tiktokVideoFromUrl(item.reel_url);
+    return video?.username === context.username && video.id === item.reel_id;
+  });
+  const pageName = mostCommonAccountName(matching.map(item => item.account_name)) || context.label;
+  return {
+    adapterId: 'tiktok_visible_tab',
+    accessBasis: 'browser_visible_user_initiated',
+    coverage: 'partial',
+    viewsMetric: 'tiktok_displayed_views',
+    reels: matching.map(item => ({
+      page_name: pageName, page_url: context.contextUrl, reel_id: item.reel_id,
+      reel_url: tiktokVideoFromUrl(item.reel_url)!.url,
+      caption: item.caption, views: item.views, likes: item.likes,
+      comments: item.comments, shares: item.shares,
+      published_at: normalizeDate(item.published_at), collected_at: collectedAt,
+      source: 'TikTok · hồ sơ'
+    })),
+    total: visible.length,
+    skipped: visible.length - matching.length,
+    invalidMetrics: 0
+  };
+}
+
 function validateRecord(reel: Reel, viewsMetric: ViewsMetric): Reel {
   const reelUrl = normalizeUrl(reel.reel_url);
   if (!reelUrl) throw new Error('Nguồn dữ liệu có Reel URL không hợp lệ.');
@@ -105,7 +133,7 @@ export async function ingestSourceBatch(
 ): Promise<IngestResult> {
   const validated = batch.reels.map(reel => validateRecord(reel, batch.viewsMetric));
   const merged = dedupe([...existing, ...validated]);
-  if (batch.adapterId === 'facebook_visible_tab') {
+  if (batch.adapterId === 'facebook_visible_tab' || batch.adapterId === 'tiktok_visible_tab') {
     const named = validated.find(reel => isDisplayAccountName(reel.page_name, reel.page_url));
     if (named) {
       for (const reel of merged) {

@@ -18,7 +18,7 @@ export function dedupe(reels: Reel[]): Reel[] {
   reels.forEach((reel, i) => {
     const keys = [reelIdentity(reel), `url:${normalizeUrl(reel.reel_url) || reel.reel_url.trim()}`];
     const urlId = reelIdentity({ reel_id: '', reel_url: reel.reel_url });
-    if (urlId.startsWith('id:')) keys.push(urlId);
+    if (urlId.startsWith('id:') || urlId.startsWith('tiktok:id:')) keys.push(urlId);
     keys.forEach(key => {
       const previous = seen.get(key);
       if (previous === undefined) seen.set(key, i);
@@ -61,6 +61,35 @@ export function pageKey(reel: Reel): string | null {
   if (url) return `url:${url}`;
   const name = reel.page_name.trim().toLocaleLowerCase();
   return name ? `name:${name}` : null;
+}
+
+export function removeAccountReels(reels: Reel[], accountKey: string): Reel[] {
+  if (!accountKey) throw new Error('Chọn một tài khoản trước khi xóa dữ liệu.');
+  return reels.filter(reel => pageKey(reel) !== accountKey);
+}
+
+export function accountDisplayLabel(accountKey: string, name: string): string {
+  if (!accountKey.startsWith('url:')) return name;
+  try {
+    const host = new URL(accountKey.slice(4)).hostname;
+    if (host === 'facebook.com') return `[Facebook] ${name}`;
+    if (host === 'tiktok.com') return `[TikTok] ${name}`;
+  } catch { /* Keep the original label for imported records without a valid URL. */ }
+  return name;
+}
+
+export function distinctAccountLabels(options: [string, string][]): [string, string][] {
+  const prefixed = options.map(([key, label]) => [key, accountDisplayLabel(key, label)] as [string, string]);
+  const counts = new Map<string, number>();
+  for (const [, label] of prefixed) {
+    const name = label.toLocaleLowerCase();
+    counts.set(name, (counts.get(name) || 0) + 1);
+  }
+  return prefixed.map(([key, label]) => [
+    key,
+    counts.get(label.toLocaleLowerCase())! > 1 && key.startsWith('url:')
+      ? `${label} · ${key.slice(4).replace(/^https:\/\//u, '')}` : label
+  ]);
 }
 
 export function filterReels(reels: Reel[], filters: Filters): Reel[] {

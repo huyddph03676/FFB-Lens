@@ -42,6 +42,12 @@ describe('Page workspace input', () => {
 
   it('rejects invalid metric and non-Reel URL', () => {
     expect(() => manualPageBatch({ ...input, views: 'many' })).toThrow('Lượt xem không hợp lệ');
-    expect(() => manualPageBatch({ ...input, reelUrl: 'https://facebook.com/watch/123' })).toThrow('URL Reel');
+    expect(() => manualPageBatch({ ...input, reelUrl: 'https://facebook.com/watch/123' })).toThrow('URL video');
+  });
+  it('accepts a TikTok video for the selected profile', () => {
+    const batch = manualPageBatch({ ...input, pageUrl: 'https://www.tiktok.com/@creator.name',
+      reelUrl: 'https://www.tiktok.com/@creator.name/video/123' });
+    expect(batch.reels[0]).toMatchObject({ page_url: 'https://tiktok.com/@creator.name',
+      reel_url: 'https://tiktok.com/@creator.name/video/123', reel_id: '123', source: 'Nhập từ TikTok' });
   });
 });

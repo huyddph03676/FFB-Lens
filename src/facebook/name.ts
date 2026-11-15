@@ -1,4 +1,5 @@
 import { facebookReelsContext } from './context';
+import { tiktokProfileContext } from '../tiktok/context';
 
 const genericHeadings = /^(?:facebook|reels|watch reels|videos?|posts|profile|menu|thước phim|bài viết)$/iu;
 
@@ -27,7 +28,7 @@ export function mostCommonAccountName(names: Iterable<unknown>): string {
 
 export function isDisplayAccountName(name: string, accountUrl: string): boolean {
   const cleaned = cleanAccountName(name);
-  const fallback = facebookReelsContext(accountUrl)?.label || '';
+  const fallback = facebookReelsContext(accountUrl)?.label || tiktokProfileContext(accountUrl)?.label || '';
   return !!cleaned && cleaned.toLocaleLowerCase() !== fallback.toLocaleLowerCase();
 }
 

@@ -11,13 +11,13 @@
 </head>
 <body>
   <h1>Quyền riêng tư — FFB Lens</h1>
-  <small>Phiên bản 0.6.3 · cập nhật 15/11/2026 · <a href="./privacy-en.html" lang="en">English</a></small>
+  <small>Phiên bản 0.7.3 · cập nhật 15/11/2026 · <a href="./privacy-en.html" lang="en">English</a></small>
   <h2>Dữ liệu trên thiết bị</h2>
-  <p>Khi bạn bấm Quét trên mục Reels của một Page hoặc trang cá nhân, FFB Lens tải lại tab một lần, đọc thẻ Reel và các trường Reel trong phản hồi GraphQL Facebook đã tải trên tab, rồi tự cuộn trong giới hạn đã chọn. Tên hiển thị của tài khoản nếu có, URL, caption, ngày đăng và số liệu có được lưu trong IndexedDB trên thiết bị; phản hồi thô không được lưu. Bạn cũng có thể nhập tay hoặc CSV.</p>
+  <p>Khi bạn bấm Quét trên mục Reels Facebook hoặc hồ sơ TikTok, FFB Lens tải lại tab một lần, đọc thẻ video và dữ liệu video đã tải trên tab, rồi tự cuộn trong giới hạn đã chọn. Tên hiển thị của tài khoản nếu có, URL, caption, ngày đăng và số liệu có được lưu trong IndexedDB trên thiết bị; phản hồi thô không được lưu. Bạn cũng có thể nhập tay hoặc CSV.</p>
   <h2>Chia sẻ và quyền truy cập</h2>
-  <p>FFB Lens không có máy chủ, analytics, tài khoản hoặc mã theo dõi. Mã extension không gửi dữ liệu đã đọc cho bên thứ ba và không tự gọi endpoint Facebook. Extension yêu cầu <code>sidePanel</code>, <code>activeTab</code> và <code>scripting</code>. Khi bạn bấm Quét lần đầu, Chrome hỏi thêm quyền truy cập trang Facebook; quyền này có thể được Chrome giữ lại cho các lần sau và bạn có thể thu hồi trong phần quản lý extension. Addon quan sát phản hồi Reel đã tải và đọc DOM của tab Reels được chọn; không đọc cookie, mật khẩu hoặc lịch sử duyệt web.</p>
+  <p>FFB Lens không có máy chủ, analytics, tài khoản hoặc mã theo dõi. Mã extension không gửi dữ liệu đã đọc cho bên thứ ba và không tự gọi endpoint Facebook hoặc TikTok. Extension yêu cầu <code>sidePanel</code>, <code>activeTab</code> và <code>scripting</code>. Khi bạn bấm Quét, Chrome hỏi quyền truy cập nền tảng đang chọn. Nếu Chrome chưa cung cấp URL của tab, nút “Nhận tài khoản từ tab” hoặc “Quét” sẽ hỏi quyền truy cập Facebook và TikTok để xác định tab. Bạn có thể thu hồi quyền trong phần quản lý extension. Addon quan sát phản hồi video đã tải và đọc DOM của tab được chọn; không đọc cookie, mật khẩu hoặc lịch sử duyệt web.</p>
   <h2>Xóa và xuất dữ liệu</h2>
-  <p>Bạn có thể xuất danh sách đang hiển thị thành CSV/XLSX. Nút “Xóa dữ liệu” xóa toàn bộ bản ghi Reels trong IndexedDB của extension sau khi bạn xác nhận. Không có bản sao máy chủ để khôi phục.</p>
+  <p>Bạn có thể xuất danh sách đang hiển thị thành CSV/XLSX. Sau khi chọn một ACCOUNT và xác nhận, nút “Xóa dữ liệu tài khoản” xóa toàn bộ video đã lưu của tài khoản đó trong IndexedDB; dữ liệu tài khoản khác được giữ lại. Không có bản sao máy chủ để khôi phục.</p>
   <p>Kết quả chỉ phản ánh Reel đã tải và được nhận diện trong lần quét. Số liệu có thể được Facebook làm tròn hoặc thiếu. Việc dùng cơ chế thu thập tự động cần phù hợp với điều khoản Meta và quyền truy cập của bạn.</p>
 </body>
 </html>

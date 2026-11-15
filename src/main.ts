@@ -1,20 +1,22 @@
 import './style.css';
 import { toCsv } from './data/csv';
-import { dedupe, filterAndRank, filterReels, outlierBaselines, pageKey, reelOutlierScore, summarize } from './data/engine';
+import { accountDisplayLabel, dedupe, distinctAccountLabels, filterAndRank, filterReels, outlierBaselines, pageKey, reelOutlierScore, removeAccountReels, summarize } from './data/engine';
 import { readReels, writeReels } from './data/db';
-import { browserVisibleBatch, csvFileSource, ingestSourceBatch } from './data/sources';
+import { browserVisibleBatch, csvFileSource, ingestSourceBatch, tiktokVisibleBatch } from './data/sources';
 import { toXlsx } from './data/xlsx';
 import { isFacebookPageHost, manualPageBatch, pageContextFromTab } from './data/manual-page';
 import { normalizeUrl } from './data/normalize';
 import { isReelsTab, type VisibleReel } from './facebook/extract';
 import { facebookReelsContext } from './facebook/context';
 import { isDisplayAccountName } from './facebook/name';
+import { tiktokProfileContext, tiktokVideoFromUrl } from './tiktok/context';
 import { englishUi, translateError, type Language } from './i18n';
 import type { DateRange, Filters, Reel, SortKey } from './types';
+import { activeBrowserTab, readableActiveTab } from './browser/active-tab';
 
 declare const chrome: {
   tabs?: {
-    query(queryInfo: { active: boolean; currentWindow: boolean }): Promise<Array<{ id?: number; url?: string }>>;
+    query(queryInfo: { active: boolean; currentWindow?: boolean; lastFocusedWindow?: boolean }): Promise<Array<{ id?: number; url?: string }>>;
     sendMessage(tabId: number, message: unknown): Promise<unknown>;
     reload(tabId: number): Promise<void>;
     onUpdated: {
@@ -44,51 +46,51 @@ interface ScanUpdate {
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
   <header class="masthead">
-    <div class="brand"><div class="brand-mark">◈</div><div><strong>FFB Lens</strong><span>REELS ANALYZER</span></div></div>
+    <div class="brand"><div class="brand-mark">◈</div><div><strong>FFB Lens</strong><span>VIDEO ANALYZER</span></div></div>
     <div class="masthead-actions"><label class="language-control" for="language-select"><span>Ngôn ngữ</span><select id="language-select" aria-label="Ngôn ngữ"><option value="vi">Tiếng Việt</option><option value="en">English</option></select></label><div class="local-badge"><span class="dot"></span> Dữ liệu trên máy</div></div>
   </header>
   <main>
     <section class="hero">
-      <div class="eyebrow">FACEBOOK PAGE / PROFILE REELS</div>
-      <h1>Phân tích Reels<br><em>ngay trên Facebook.</em></h1>
-      <p>Mở mục Reels của Page hoặc trang cá nhân, bấm Quét để cuộn và xếp hạng các Reel đã tải.</p>
+      <div class="eyebrow">FACEBOOK REELS / TIKTOK VIDEOS</div>
+      <h1>Phân tích video<br><em>ngay trên trang.</em></h1>
+      <p>Mở mục Reels Facebook hoặc hồ sơ TikTok, bấm Quét để cuộn và xếp hạng video đã tải.</p>
     </section>
     <section class="import-card page-workspace">
-      <div class="section-head"><div><div class="eyebrow">01 / TÀI KHOẢN ĐANG XEM</div><h2>Quét mục Reels</h2></div><div class="step-icon">↗</div></div>
-      <label class="field-label" for="page-url">URL Page hoặc trang cá nhân</label>
-      <input id="page-url" type="url" placeholder="https://www.facebook.com/ten-tai-khoan/reels/" spellcheck="false" />
+      <div class="section-head"><div><div class="eyebrow">01 / TÀI KHOẢN ĐANG XEM</div><h2>Quét video</h2></div><div class="step-icon">↗</div></div>
+      <label class="field-label" for="page-url">URL tài khoản Facebook hoặc TikTok</label>
+      <input id="page-url" type="url" placeholder="https://www.tiktok.com/@username" spellcheck="false" />
       <div class="page-actions"><button id="detect-page" class="button ghost" type="button">Nhận tài khoản từ tab</button><a id="open-page" class="button ghost" target="_blank" rel="noopener noreferrer" hidden>Mở mục Reels ↗</a></div>
-      <p id="page-status" class="field-help">Mở mục Reels của Page hoặc trang cá nhân rồi bấm biểu tượng FFB Lens.</p>
-      <div class="scan-controls"><label class="control"><span>GIỚI HẠN LẦN CUỘN</span><select id="scan-steps"><option value="10">10 lần</option><option value="30" selected>30 lần</option><option value="60">60 lần</option><option value="100">100 lần</option></select></label><button id="scan-start" class="button primary" type="button">Quét Reels trên tab</button><button id="scan-stop" class="button ghost" type="button" disabled>Dừng</button></div>
-      <div id="scan-status" class="scan-status" role="status" aria-live="polite">Chưa quét. Chrome sẽ hỏi quyền đọc tab Facebook khi bạn bấm Quét lần đầu; không cần mở DevTools.</div>
-      <details class="secondary-import"><summary>Ghi một Reel thủ công</summary><form id="manual-form" class="manual-form">
-        <label class="field-label" for="manual-url">URL Reel <span>· bắt buộc</span></label>
+      <p id="page-status" class="field-help">Mở mục Reels Facebook hoặc hồ sơ TikTok rồi bấm biểu tượng FFB Lens.</p>
+      <div class="scan-controls"><label class="control"><span>GIỚI HẠN LẦN CUỘN</span><select id="scan-steps"><option value="10">10 lần</option><option value="30" selected>30 lần</option><option value="60">60 lần</option><option value="100">100 lần</option></select></label><button id="scan-start" class="button primary" type="button">Quét video trên tab</button><button id="scan-stop" class="button ghost" type="button" disabled>Dừng</button></div>
+      <div id="scan-status" class="scan-status" role="status" aria-live="polite">Chưa quét. Chrome sẽ hỏi quyền đọc Facebook hoặc TikTok khi bạn bấm Quét lần đầu.</div>
+      <details class="secondary-import"><summary>Ghi một video thủ công</summary><form id="manual-form" class="manual-form">
+        <label class="field-label" for="manual-url">URL video <span>· bắt buộc</span></label>
         <input id="manual-url" type="url" placeholder="https://www.facebook.com/reel/123456…" required spellcheck="false" />
-        <button id="detect-reel" class="button ghost" type="button">Lấy URL Reel từ tab đang mở</button>
+        <button id="detect-reel" class="button ghost" type="button">Lấy URL video từ tab đang mở</button>
         <div class="manual-metrics"><label class="control"><span>LƯỢT XEM</span><input id="manual-views" inputmode="decimal" placeholder="1.2M" /></label><label class="control"><span>LƯỢT THÍCH</span><input id="manual-likes" inputmode="decimal" placeholder="Tùy chọn" /></label><label class="control"><span>BÌNH LUẬN</span><input id="manual-comments" inputmode="decimal" placeholder="Tùy chọn" /></label><label class="control"><span>CHIA SẺ</span><input id="manual-shares" inputmode="decimal" placeholder="Tùy chọn" /></label></div>
-        <label class="control"><span>CAPTION · TÙY CHỌN</span><textarea id="manual-caption" rows="2" placeholder="Nội dung Reel đang xem"></textarea></label>
+        <label class="control"><span>CAPTION · TÙY CHỌN</span><textarea id="manual-caption" rows="2" placeholder="Nội dung video đang xem"></textarea></label>
         <label class="control"><span>NGÀY ĐĂNG · TÙY CHỌN</span><input id="manual-date" type="date" /></label>
-        <button class="button primary" type="submit">+ Ghi Reel và xếp hạng</button>
+        <button class="button primary" type="submit">+ Ghi video và xếp hạng</button>
       </form></details>
-      <p class="field-help">Số liệu có thể được Facebook làm tròn. Chỉ số không hiển thị sẽ để trống; kết quả là Top của Reel đã đọc, không phải toàn bộ lịch sử tài khoản.</p>
+      <p class="field-help">Số liệu có thể được làm tròn. Chỉ số không hiển thị sẽ để trống; kết quả là Top video đã đọc, không phải toàn bộ lịch sử tài khoản.</p>
       <details class="secondary-import"><summary>Nhập dữ liệu hoặc xem mẫu</summary><div class="import-actions"><button id="import-button" class="button ghost" type="button">Nhập CSV</button><button id="sample-button" class="button ghost" type="button">Xem dữ liệu mẫu</button><input id="file-input" type="file" accept=".csv,text/csv,text/plain" hidden /></div></details>
       <div id="notice" class="notice" role="status" aria-live="polite"></div>
     </section>
     <section class="insights" aria-label="Tổng quan">
       <div class="section-head compact"><div><div class="eyebrow">02 / TỔNG QUAN</div><h2>Tập dữ liệu hiện tại</h2></div></div>
       <div class="stats-grid">
-        <div class="stat"><span>REELS</span><strong id="stat-count">—</strong><small>Sau bộ lọc</small></div>
+        <div class="stat"><span>VIDEOS</span><strong id="stat-count">—</strong><small>Sau bộ lọc</small></div>
         <div class="stat"><span>TỔNG LƯỢT XEM</span><strong id="stat-views">—</strong><small>Có dữ liệu views</small></div>
         <div class="stat"><span>TRUNG VỊ VIEWS</span><strong id="stat-median">—</strong><small id="stat-coverage">—</small></div>
         <div class="stat"><span>TB VIEWS</span><strong id="stat-mean">—</strong><small>Trên Reel có views</small></div>
         <div class="stat"><span>MAX VIEWS</span><strong id="stat-max">—</strong><small>Trong tập đã lọc</small></div>
         <div class="stat"><span>CÓ NGÀY ĐĂNG</span><strong id="stat-dates">—</strong><small id="stat-date-coverage">—</small></div>
       </div>
-      <div id="highlight" class="highlight" hidden><div><span>REEL NỔI BẬT NHẤT THEO VIEWS</span><strong id="highlight-title"></strong></div><a id="highlight-link" target="_blank" rel="noopener noreferrer">Mở Reel ↗</a></div>
+      <div id="highlight" class="highlight" hidden><div><span>VIDEO NỔI BẬT NHẤT THEO VIEWS</span><strong id="highlight-title"></strong></div><a id="highlight-link" target="_blank" rel="noopener noreferrer">Mở video ↗</a></div>
     </section>
     <section class="results">
-      <div class="section-head"><div><div class="eyebrow">03 / BẢNG XẾP HẠNG</div><h2>Danh sách Reels</h2></div><span id="result-count" class="result-count">0 kết quả</span></div>
-      <div class="scope-note">Xếp hạng phản ánh Reel đã quét, ghi hoặc nhập. Phạm vi quét có giới hạn và có thể thiếu Reel hoặc chỉ số.</div>
+      <div class="section-head"><div><div class="eyebrow">03 / BẢNG XẾP HẠNG</div><h2>Danh sách video</h2></div><span id="result-count" class="result-count">0 kết quả</span></div>
+      <div class="scope-note">Xếp hạng phản ánh video đã quét, ghi hoặc nhập. Phạm vi quét có giới hạn và có thể thiếu video hoặc chỉ số.</div>
       <div class="filter-grid">
         <label class="control wide"><span>TÌM KIẾM</span><input id="query" type="search" placeholder="Caption, Page, URL..." /></label>
         <label class="control"><span>SẮP XẾP</span><select id="sort"><option value="views">Nhiều lượt xem</option><option value="likes">Nhiều lượt thích</option><option value="comments">Nhiều bình luận</option><option value="shares">Nhiều chia sẻ</option><option value="newest">Mới nhất</option><option value="oldest">Cũ nhất</option></select></label>
@@ -102,8 +104,9 @@ app.innerHTML = `
         <label class="control"><span>VIEWS TỐI THIỂU</span><input id="min-views" type="number" min="0" step="1" placeholder="Không giới hạn" /></label>
       </div>
       <div id="scope-detail" class="scope-detail"></div>
-      <div class="baseline-note">Outlier = views ÷ trung vị views của cùng tài khoản trong kỳ đã chọn. Cần ít nhất 5 Reel có views và trung vị &gt; 0. Tìm kiếm, nguồn, ngưỡng views và Top không đổi nhóm so sánh.</div>
-      <div class="toolbar"><span id="data-count">0 Reels đã lưu</span><div><button id="csv-button" class="text-button" disabled>↓ CSV</button><button id="xlsx-button" class="text-button" disabled>↓ XLSX</button><button id="clear-button" class="text-button danger" disabled>Xóa dữ liệu</button></div></div>
+      <div class="baseline-note">Outlier = views ÷ trung vị views của cùng tài khoản trong kỳ đã chọn. Cần ít nhất 5 video có views và trung vị &gt; 0. Tìm kiếm, nguồn, ngưỡng views và Top không đổi nhóm so sánh.</div>
+      <div class="toolbar"><span id="data-count">0 video đã lưu</span><div><button id="csv-button" class="text-button" disabled>↓ CSV</button><button id="xlsx-button" class="text-button" disabled>↓ XLSX</button><button id="delete-account-button" class="text-button danger" disabled>Xóa dữ liệu tài khoản</button></div></div>
+      <p id="delete-scope" class="field-help">Chọn một ACCOUNT để xóa riêng dữ liệu của tài khoản đó.</p>
       <div id="list" class="reel-list"></div>
     </section>
     <footer>FFB LENS <span>·</span> LOCAL FIRST <span>·</span> <a id="privacy-link" href="./privacy.html" target="_blank" rel="noopener noreferrer">QUYỀN RIÊNG TƯ</a></footer>
@@ -129,8 +132,8 @@ for (const node of Array.from(app.querySelectorAll('*'))) {
   }
 }
 let scanStatus = {
-  vi: 'Chưa quét. Chrome sẽ hỏi quyền đọc tab Facebook khi bạn bấm Quét lần đầu; không cần mở DevTools.',
-  en: 'No scan yet. Chrome will ask for Facebook access when you scan for the first time. DevTools is not needed.'
+  vi: 'Chưa quét. Chrome sẽ hỏi quyền đọc Facebook hoặc TikTok khi bạn bấm Quét lần đầu.',
+  en: 'No scan yet. Chrome will ask for Facebook or TikTok access on the first scan.'
 };
 let lastNotice: { vi: string; en: string; error: boolean } | null = null;
 function setScanStatus(vi: string, en: string) {
@@ -159,8 +162,10 @@ function applyLanguage(next: Language) {
 let allReels: Reel[] = [];
 let visibleReels: Reel[] = [];
 let visibleScores: (number | null)[] = [];
-let activeScan: { id: string; tabId: number; pageUrl: string; seen: Set<string>; lastUpdate: number; ingestError: string } | null = null;
+let activeScan: { id: string; tabId: number; pageUrl: string; platform: 'facebook' | 'tiktok'; seen: Set<string>; lastUpdate: number; ingestError: string } | null = null;
 let scanStarting = false;
+let scanFinalizing = false;
+let deletingAccount = false;
 let ingestQueue = Promise.resolve();
 
 function notice(message: string, error = false, english = translateError(message, 'en')) {
@@ -181,17 +186,18 @@ function updatePageContext() {
   const status = el('page-status');
   const link = el<HTMLAnchorElement>('open-page');
   if (pageUrl) {
-    const context = facebookReelsContext(pageUrl)!;
-    const label = allReels.find(reel => pageKey(reel) === `url:${pageUrl}` && isDisplayAccountName(reel.page_name, pageUrl))?.page_name || context.label;
-    status.textContent = t(`Tài khoản: ${label}. Bấm Quét khi tab này đang mở mục Reels.`, `Account: ${label}. Click Scan when this tab shows Reels.`);
-    link.href = context.reelsUrl;
+    const context = facebookReelsContext(pageUrl) || tiktokProfileContext(pageUrl)!;
+    const label = accountDisplayLabel(`url:${pageUrl}`, allReels.find(reel => pageKey(reel) === `url:${pageUrl}` && isDisplayAccountName(reel.page_name, pageUrl))?.page_name || context.label);
+    status.textContent = t(`Tài khoản: ${label}. Bấm Quét khi tab đang mở ${'reelsUrl' in context ? 'mục Reels' : 'hồ sơ TikTok'}.`, `Account: ${label}. Click Scan when the tab shows ${'reelsUrl' in context ? 'Reels' : 'the TikTok profile'}.`);
+    link.href = 'reelsUrl' in context ? context.reelsUrl : context.videosUrl;
+    link.textContent = t('reelsUrl' in context ? 'Mở mục Reels ↗' : 'Mở hồ sơ TikTok ↗', 'reelsUrl' in context ? 'Open Reels tab ↗' : 'Open TikTok profile ↗');
     link.hidden = false;
   } else {
     status.textContent = pageUrl === null
-      ? t('URL này không phải Page hoặc trang cá nhân Facebook hợp lệ.', 'This is not a valid Facebook Page or profile URL.')
+      ? t('URL này không phải tài khoản Facebook hoặc hồ sơ TikTok hợp lệ.', 'This is not a valid Facebook account or TikTok profile URL.')
       : el<HTMLSelectElement>('page-filter').value.startsWith('name:')
         ? t('Tài khoản đã chọn chưa có URL trong dữ liệu đã lưu.', 'The selected account has no URL in the saved data.')
-        : t('Mở mục Reels của Page hoặc trang cá nhân rồi bấm biểu tượng FFB Lens.', 'Open a Page or profile Reels tab and click FFB Lens.');
+        : t('Mở mục Reels Facebook hoặc hồ sơ TikTok rồi bấm biểu tượng FFB Lens.', 'Open Facebook Reels or a TikTok profile and click FFB Lens.');
     link.hidden = true;
   }
 }
@@ -205,9 +211,9 @@ function updateUrlFromAccountFilter() {
 async function detectActivePage(silent = false) {
   try {
     if (typeof chrome === 'undefined' || !chrome.tabs) throw new Error('Chức năng này chỉ hoạt động trong Chrome Extension.');
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const tab = silent ? await activeBrowserTab(chrome.tabs) : (await readableActiveTab(chrome.tabs, chrome.permissions)).tab;
     const pageUrl = pageContextFromTab(tab?.url || '');
-    if (!pageUrl) throw new Error('Hãy mở mục Reels của Page hoặc trang cá nhân rồi bấm lại biểu tượng addon.');
+    if (!pageUrl) throw new Error('Hãy mở mục Reels Facebook hoặc hồ sơ TikTok rồi bấm lại biểu tượng addon.');
     el<HTMLInputElement>('page-url').value = pageUrl;
     updatePageContext();
     const option = Array.from(el<HTMLSelectElement>('page-filter').options).find(item => item.value === `url:${pageUrl}`);
@@ -218,24 +224,23 @@ async function detectActivePage(silent = false) {
 async function detectActiveReel() {
   try {
     if (typeof chrome === 'undefined' || !chrome.tabs) throw new Error('Chức năng này chỉ hoạt động trong Chrome Extension.');
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const { tab } = await readableActiveTab(chrome.tabs, chrome.permissions);
     const url = normalizeUrl(tab?.url || '');
-    if (!url || !isFacebookPageHost(new URL(url).hostname) ||
-        !/^\/(?:reel|reels|videos)\/\d+\/?$/i.test(new URL(url).pathname)) {
-      throw new Error('Tab đang mở chưa phải URL của một Reel Facebook.');
-    }
+    const facebookVideo = !!url && isFacebookPageHost(new URL(url).hostname) && /^\/(?:reel|reels|videos)\/\d+\/?$/i.test(new URL(url).pathname);
+    if (!url || (!facebookVideo && !tiktokVideoFromUrl(url))) throw new Error('Tab đang mở chưa phải URL video Facebook hoặc TikTok.');
     el<HTMLInputElement>('manual-url').value = url;
-    notice('Đã lấy URL Reel. Hãy nhập số liệu bạn nhìn thấy rồi bấm Ghi Reel.', false, 'Reel URL loaded. Enter the metrics you can see, then save the Reel.');
+    notice('Đã lấy URL video. Hãy nhập số liệu bạn nhìn thấy rồi bấm Ghi video.', false, 'Video URL loaded. Enter the metrics you can see, then save the video.');
   } catch (error) { notice(error instanceof Error ? error.message : 'Không thể nhận diện Reel.', true); }
 }
 
 function scanButtons(running: boolean) {
-  el<HTMLButtonElement>('scan-start').disabled = running;
-  el<HTMLButtonElement>('scan-stop').disabled = !running;
+  el<HTMLButtonElement>('scan-start').disabled = running || scanFinalizing || deletingAccount;
+  el<HTMLButtonElement>('scan-stop').disabled = !running || scanFinalizing;
+  el<HTMLButtonElement>('delete-account-button').disabled = running || scanFinalizing || deletingAccount || !selectedAccountDeletion();
 }
 
 async function reloadAndWait(tabId: number): Promise<void> {
-  if (!chrome?.tabs) throw new Error('Không truy cập được tab Facebook.');
+  if (!chrome?.tabs) throw new Error('Không truy cập được tab đang mở.');
   const tabs = chrome.tabs;
   let resolveReady!: () => void;
   let rejectReady!: (reason: Error) => void;
@@ -244,7 +249,7 @@ async function reloadAndWait(tabId: number): Promise<void> {
     if (updatedId === tabId && change.status === 'complete') resolveReady();
   };
   tabs.onUpdated.addListener(listener);
-  const timeout = setTimeout(() => rejectReady(new Error('Tab Facebook tải quá lâu. Hãy đợi trang hiện Reels rồi quét lại.')), 30_000);
+  const timeout = setTimeout(() => rejectReady(new Error('Tab tải quá lâu. Hãy đợi nội dung hiện lên rồi quét lại.')), 30_000);
   try {
     await tabs.reload(tabId);
     await ready;
@@ -255,31 +260,35 @@ async function reloadAndWait(tabId: number): Promise<void> {
 }
 
 async function startScan() {
-  if (activeScan || scanStarting) return;
+  if (activeScan || scanStarting || scanFinalizing || deletingAccount) return;
   scanStarting = true;
   scanButtons(true);
   try {
-    if (typeof chrome === 'undefined' || !chrome.tabs || !chrome.scripting || !chrome.permissions) throw new Error('Quét Reels chỉ hoạt động trong Chrome Extension.');
-    const granted = await chrome.permissions.request({ origins: ['https://*.facebook.com/*'] });
-    if (!granted) throw new Error('Chrome chưa được cấp quyền đọc tab Facebook. Bấm Quét và cho phép để tiếp tục.');
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id || !tab.url || !isReelsTab(tab.url)) throw new Error('Hãy mở mục Reels của Page hoặc trang cá nhân rồi bấm biểu tượng addon trên chính tab đó.');
+    if (typeof chrome === 'undefined' || !chrome.tabs || !chrome.scripting || !chrome.permissions) throw new Error('Quét video chỉ hoạt động trong Chrome Extension.');
+    const { tab, grantedAll } = await readableActiveTab(chrome.tabs, chrome.permissions);
+    const tiktokContext = tiktokProfileContext(tab?.url || '');
+    const platform: 'tiktok' | 'facebook' = tiktokContext ? 'tiktok' : 'facebook';
+    if (!tab?.id || !tab.url || (!tiktokContext && !isReelsTab(tab.url))) throw new Error('Hãy mở mục Reels Facebook hoặc hồ sơ TikTok rồi bấm biểu tượng addon trên chính tab đó.');
     const pageUrl = pageContextFromTab(tab.url);
-    if (!pageUrl) throw new Error('Không nhận diện được tài khoản từ tab Reels.');
-    const registered = await chrome.scripting.getRegisteredContentScripts({ ids: ['ffb-facebook-observer'] });
+    if (!pageUrl) throw new Error('Không nhận diện được tài khoản từ tab đang mở.');
+    const origin = platform === 'tiktok' ? 'https://*.tiktok.com/*' : 'https://*.facebook.com/*';
+    const granted = grantedAll || await chrome.permissions.request({ origins: [origin] });
+    if (!granted) throw new Error('Chrome chưa được cấp quyền đọc tab. Bấm Quét và cho phép để tiếp tục.');
+    const observerId = platform === 'tiktok' ? 'ffb-tiktok-observer' : 'ffb-facebook-observer';
+    const registered = await chrome.scripting.getRegisteredContentScripts({ ids: [observerId] });
     if (!registered.length) await chrome.scripting.registerContentScripts([{
-      id: 'ffb-facebook-observer', js: ['facebook-observer.js'], matches: ['https://*.facebook.com/*'],
+      id: observerId, js: [platform === 'tiktok' ? 'tiktok-observer.js' : 'facebook-observer.js'], matches: [origin],
       runAt: 'document_start', world: 'MAIN', persistAcrossSessions: false
     }]);
-    setScanStatus('Đang tải lại tab Reels để ghi nhận số tương tác và ngày đăng Facebook cung cấp…', 'Reloading the Reels tab to capture engagement and posted dates provided by Facebook…');
+    setScanStatus(`Đang tải lại tab ${platform === 'tiktok' ? 'TikTok' : 'Reels'} để ghi nhận số liệu…`, `Reloading the ${platform === 'tiktok' ? 'TikTok profile' : 'Reels'} tab to capture metrics…`);
     await reloadAndWait(tab.id);
-    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
-    const scan = { id: crypto.randomUUID(), tabId: tab.id, pageUrl, seen: new Set<string>(), lastUpdate: Date.now(), ingestError: '' };
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: [platform === 'tiktok' ? 'tiktok-content.js' : 'content.js'] });
+    const scan = { id: crypto.randomUUID(), tabId: tab.id, pageUrl, platform, seen: new Set<string>(), lastUpdate: Date.now(), ingestError: '' };
     activeScan = scan;
     scanStarting = false;
     el<HTMLInputElement>('page-url').value = pageUrl;
     updatePageContext();
-    setScanStatus('Đang đọc Reel hiển thị và cuộn tab Facebook…', 'Reading visible Reels and scrolling the Facebook tab…');
+    setScanStatus(`Đang đọc video hiển thị và cuộn tab ${platform === 'tiktok' ? 'TikTok' : 'Facebook'}…`, `Reading visible videos and scrolling the ${platform === 'tiktok' ? 'TikTok' : 'Facebook'} tab…`);
     await chrome.tabs.sendMessage(tab.id, { type: 'FFB_START', scanId: scan.id, maxSteps: Number(el<HTMLSelectElement>('scan-steps').value) });
   } catch (error) {
     activeScan = null;
@@ -305,7 +314,7 @@ function handleScanUpdate(message: ScanUpdate, sender: { tab?: { id?: number } }
   if ((message.phase === 'progress' || message.phase === 'done') && Array.isArray(message.reels) && message.reels.length) {
     for (const reel of message.reels) scan.seen.add(reel.reel_id);
     ingestQueue = ingestQueue.then(async () => {
-      const batch = browserVisibleBatch(scan.pageUrl, message.reels);
+      const batch = scan.platform === 'tiktok' ? tiktokVisibleBatch(scan.pageUrl, message.reels) : browserVisibleBatch(scan.pageUrl, message.reels);
       const result = await ingestSourceBatch(allReels, batch);
       allReels = result.reels;
       refreshFilterOptions();
@@ -319,19 +328,20 @@ function handleScanUpdate(message: ScanUpdate, sender: { tab?: { id?: number } }
   }
   if (message.phase === 'progress' || message.phase === 'heartbeat') {
     const d = message.diagnostics;
-    const detailVi = d ? ` · ${d.fromBrowser} từ Facebook · views ${d.withViews}, likes ${d.withLikes}, comments ${d.withComments}, ngày ${d.withDates}` : '';
-    const detailEn = d ? ` · ${d.fromBrowser} from Facebook · views ${d.withViews}, likes ${d.withLikes}, comments ${d.withComments}, dates ${d.withDates}` : '';
-    setScanStatus(`Đang quét: ${scan.seen.size} Reel nhận diện · ${message.step} lần cuộn${detailVi}.`, `Scanning: ${scan.seen.size} Reels found · ${message.step} scrolls${detailEn}.`);
+    const detailVi = d ? ` · ${d.fromBrowser} từ ${scan.platform === 'tiktok' ? 'TikTok' : 'Facebook'} · views ${d.withViews}, likes ${d.withLikes}, comments ${d.withComments}, ngày ${d.withDates}` : '';
+    const detailEn = d ? ` · ${d.fromBrowser} from ${scan.platform === 'tiktok' ? 'TikTok' : 'Facebook'} · views ${d.withViews}, likes ${d.withLikes}, comments ${d.withComments}, dates ${d.withDates}` : '';
+    setScanStatus(`Đang quét: ${scan.seen.size} video nhận diện · ${message.step} lần cuộn${detailVi}.`, `Scanning: ${scan.seen.size} videos found · ${message.step} scrolls${detailEn}.`);
   } else if (message.phase === 'done' || message.phase === 'error') {
     activeScan = null;
+    scanFinalizing = true;
     scanButtons(false);
     void ingestQueue.then(() => {
       const d = message.diagnostics;
-      const detailVi = d ? ` Bước cuối: ${d.links} liên kết ứng viên, ${d.fromBrowser} Reel từ Facebook; views ${d.withViews}, likes ${d.withLikes}, comments ${d.withComments}, ngày ${d.withDates}.` : '';
-      const detailEn = d ? ` Final step: ${d.links} candidate links, ${d.fromBrowser} Reels from Facebook; views ${d.withViews}, likes ${d.withLikes}, comments ${d.withComments}, dates ${d.withDates}.` : '';
+      const detailVi = d ? ` Bước cuối: ${d.links} liên kết ứng viên, ${d.fromBrowser} video từ ${scan.platform === 'tiktok' ? 'TikTok' : 'Facebook'}; views ${d.withViews}, likes ${d.withLikes}, comments ${d.withComments}, ngày ${d.withDates}.` : '';
+      const detailEn = d ? ` Final step: ${d.links} candidate links, ${d.fromBrowser} videos from ${scan.platform === 'tiktok' ? 'TikTok' : 'Facebook'}; views ${d.withViews}, likes ${d.withLikes}, comments ${d.withComments}, dates ${d.withDates}.` : '';
       if (scan.ingestError) setScanStatus(scan.ingestError, translateError(scan.ingestError, 'en'));
-      else setScanStatus(`${message.phase === 'error' ? 'Quét lỗi' : 'Đã quét'}: ${scan.seen.size} Reel nhận diện.${detailVi} ${message.reason} Kết quả chỉ phản ánh phần tab đã tải.`, `${message.phase === 'error' ? 'Scan failed' : 'Scan complete'}: ${scan.seen.size} Reels found.${detailEn} ${translateError(message.reason, 'en')} Results cover only content loaded in the tab.`);
-    });
+      else setScanStatus(`${message.phase === 'error' ? 'Quét lỗi' : 'Đã quét'}: ${scan.seen.size} video nhận diện.${detailVi} ${message.reason} Kết quả chỉ phản ánh phần tab đã tải.`, `${message.phase === 'error' ? 'Scan failed' : 'Scan complete'}: ${scan.seen.size} videos found.${detailEn} ${translateError(message.reason, 'en')} Results cover only content loaded in the tab.`);
+    }).finally(() => { scanFinalizing = false; scanButtons(false); });
   }
 }
 
@@ -361,8 +371,10 @@ function populateFilter(id: string, options: [string, string][], allLabel: strin
 
 function sourceLabel(source: string): string {
   if (source === 'Facebook · tab Reels') return t(source, 'Facebook · Reels tab');
+  if (source === 'TikTok · hồ sơ') return t(source, 'TikTok · profile');
   if (source === 'Nhập khi xem Page') return t(source, 'Added from account');
   if (source === 'Nhập từ Facebook') return t(source, 'Added from Facebook');
+  if (source === 'Nhập từ TikTok') return t(source, 'Added from TikTok');
   return source;
 }
 
@@ -376,8 +388,17 @@ function refreshFilterOptions() {
     }
     if (reel.source) sources.add(reel.source);
   });
-  populateFilter('page-filter', [...pages].sort((a, b) => a[1].localeCompare(b[1], language)), t('Tất cả tài khoản', 'All accounts'));
+  populateFilter('page-filter', distinctAccountLabels([...pages]).sort((a, b) => a[1].localeCompare(b[1], language)), t('Tất cả tài khoản', 'All accounts'));
   populateFilter('source-filter', [...sources].sort((a, b) => a.localeCompare(b, language)).map(source => [source, sourceLabel(source)]), t('Tất cả nguồn', 'All sources'));
+}
+
+function selectedAccountDeletion(): { key: string; label: string; count: number } | null {
+  const select = el<HTMLSelectElement>('page-filter');
+  const key = select.value;
+  if (!key) return null;
+  const count = allReels.filter(reel => pageKey(reel) === key).length;
+  if (!count) return null;
+  return { key, label: (select.selectedOptions[0]?.textContent || key).replace(/\s+/gu, ' ').trim().slice(0, 240), count };
 }
 
 function addText(parent: HTMLElement, tag: string, className: string, value: string): HTMLElement {
@@ -403,7 +424,7 @@ function render() {
   el('stat-max').textContent = stats.max === null ? '—' : compactFormat.format(stats.max);
   const dated = allFiltered.filter(reel => reel.published_at !== null).length;
   el('stat-dates').textContent = numberFormat.format(dated);
-  el('stat-date-coverage').textContent = `${dated}/${stats.total} Reels`;
+  el('stat-date-coverage').textContent = `${dated}/${stats.total} videos`;
   const maxReel = stats.max === null ? null : allFiltered.find(reel => reel.views === stats.max);
   el('highlight').hidden = !maxReel;
   if (maxReel) {
@@ -412,21 +433,25 @@ function render() {
   }
   el('result-count').textContent = t(`${visibleReels.length}/${allFiltered.length} kết quả`, `${visibleReels.length}/${allFiltered.length} results`);
   el('scope-detail').textContent = t(
-    `Phạm vi thống kê: ${numberFormat.format(allFiltered.length)} Reel sau bộ lọc trên ${numberFormat.format(allReels.length)} Reel đã lưu. Bảng và tệp xuất giới hạn Top ${filters.top}.${filters.range !== 'all' ? ' Reel thiếu ngày đăng không xuất hiện khi lọc thời gian.' : ''}`,
-    `Scope: ${numberFormat.format(allFiltered.length)} Reels after filters out of ${numberFormat.format(allReels.length)} saved. The list and exports show Top ${filters.top}.${filters.range !== 'all' ? ' Reels without a posted date are excluded by time filters.' : ''}`
+    `Phạm vi thống kê: ${numberFormat.format(allFiltered.length)} video sau bộ lọc trên ${numberFormat.format(allReels.length)} video đã lưu. Bảng và tệp xuất giới hạn Top ${filters.top}.${filters.range !== 'all' ? ' Video thiếu ngày đăng không xuất hiện khi lọc thời gian.' : ''}`,
+    `Scope: ${numberFormat.format(allFiltered.length)} videos after filters out of ${numberFormat.format(allReels.length)} saved. The list and exports show Top ${filters.top}.${filters.range !== 'all' ? ' Videos without a posted date are excluded by time filters.' : ''}`
   );
-  el('data-count').textContent = t(`${numberFormat.format(allReels.length)} Reels đã lưu`, `${numberFormat.format(allReels.length)} Reels saved`);
+  el('data-count').textContent = t(`${numberFormat.format(allReels.length)} video đã lưu`, `${numberFormat.format(allReels.length)} videos saved`);
   el<HTMLButtonElement>('csv-button').disabled = !visibleReels.length;
   el<HTMLButtonElement>('xlsx-button').disabled = !visibleReels.length;
-  el<HTMLButtonElement>('clear-button').disabled = !allReels.length;
+  const deletion = selectedAccountDeletion();
+  el<HTMLButtonElement>('delete-account-button').disabled = !deletion || !!activeScan || scanStarting || scanFinalizing || deletingAccount;
+  el('delete-scope').textContent = deletion
+    ? t(`Sẽ xóa ${numberFormat.format(deletion.count)} video đã lưu của ${deletion.label}, kể cả video ngoài bộ lọc hiện tại.`, `Deletes ${numberFormat.format(deletion.count)} saved videos for ${deletion.label}, including videos outside the current filters.`)
+    : t('Chọn một ACCOUNT để xóa riêng dữ liệu của tài khoản đó.', 'Select an ACCOUNT to delete only that account’s data.');
   const list = el<HTMLDivElement>('list');
   list.replaceChildren();
   if (!visibleReels.length) {
     const empty = document.createElement('div');
     empty.className = 'empty';
     addText(empty, 'div', 'empty-icon', '◌');
-    addText(empty, 'strong', '', allReels.length ? t('Không có Reel phù hợp', 'No matching Reels') : t('Chưa có dữ liệu Reels', 'No Reel data yet'));
-    addText(empty, 'p', '', allReels.length ? t('Thử đổi từ khóa hoặc bộ lọc thời gian.', 'Try another search or time filter.') : t('Mở mục Reels của Page hoặc trang cá nhân và bấm Quét để bắt đầu.', 'Open a Page or profile Reels tab and click Scan to start.'));
+    addText(empty, 'strong', '', allReels.length ? t('Không có video phù hợp', 'No matching videos') : t('Chưa có dữ liệu video', 'No video data yet'));
+    addText(empty, 'p', '', allReels.length ? t('Thử đổi từ khóa hoặc bộ lọc thời gian.', 'Try another search or time filter.') : t('Mở mục Reels Facebook hoặc hồ sơ TikTok và bấm Quét để bắt đầu.', 'Open Facebook Reels or a TikTok profile and click Scan to start.'));
     list.append(empty);
     return;
   }
@@ -436,10 +461,10 @@ function render() {
     const top = document.createElement('div'); top.className = 'reel-top';
     addText(top, 'span', 'rank', String(i + 1).padStart(2, '0'));
     const identity = document.createElement('div'); identity.className = 'reel-identity';
-    addText(identity, 'strong', '', reel.caption || t('Reel không có caption', 'Reel without a caption'));
-    addText(identity, 'span', '', `${reel.page_name || t('Chưa rõ Page', 'Unknown Page')} · ${reel.published_at ? new Date(reel.published_at).toLocaleDateString(language === 'en' ? 'en-US' : 'vi-VN') : t('Chưa có ngày đăng', 'No posted date')}`);
+    addText(identity, 'strong', '', reel.caption || t('Video không có caption', 'Video without a caption'));
+    addText(identity, 'span', '', `${accountDisplayLabel(pageKey(reel) || '', reel.page_name || t('Chưa rõ Page', 'Unknown Page'))} · ${reel.published_at ? new Date(reel.published_at).toLocaleDateString(language === 'en' ? 'en-US' : 'vi-VN') : t('Chưa có ngày đăng', 'No posted date')}`);
     top.append(identity);
-    const link = document.createElement('a'); link.className = 'open-link'; link.href = reel.reel_url; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.textContent = '↗'; link.title = t('Mở Reel gốc', 'Open original Reel');
+    const link = document.createElement('a'); link.className = 'open-link'; link.href = reel.reel_url; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.textContent = '↗'; link.title = t('Mở video gốc', 'Open original video');
     top.append(link); row.append(top);
     const metrics = document.createElement('div'); metrics.className = 'metrics';
     const entries: [string, number | null][] = [['VIEWS', reel.views], ['LIKES', reel.likes], ['COMMENTS', reel.comments], ['SHARES', reel.shares]];
@@ -457,7 +482,7 @@ function render() {
 async function handleFile(file: File) {
   if (file.size > 20 * 1024 * 1024) { notice('CSV vượt giới hạn 20 MB.', true); return; }
   const context = validPageContext();
-  if (context === null) { notice('URL Page phải thuộc facebook.com và dùng http/https.', true); return; }
+  if (context === null) { notice('URL tài khoản phải thuộc Facebook hoặc TikTok và dùng http/https.', true); return; }
   try {
     const batch = await csvFileSource.load({ file, fallbackPageUrl: context });
     const result = await ingestSourceBatch(allReels, batch);
@@ -507,9 +532,9 @@ el<HTMLFormElement>('manual-form').addEventListener('submit', async event => {
     el<HTMLFormElement>('manual-form').reset();
     el<HTMLInputElement>('manual-url').focus();
     notice(
-      result.newCount ? 'Đã ghi Reel. Bảng xếp hạng của tài khoản đã cập nhật.' : 'Reel này đã có; dữ liệu được cập nhật nếu bản mới đầy đủ hơn.',
+      result.newCount ? 'Đã ghi video. Bảng xếp hạng của tài khoản đã cập nhật.' : 'Video này đã có; dữ liệu được cập nhật nếu bản mới đầy đủ hơn.',
       false,
-      result.newCount ? 'Reel saved. The account rankings have been updated.' : 'This Reel already exists; its data was updated if the new record was more complete.'
+      result.newCount ? 'Video saved. The account rankings have been updated.' : 'This video already exists; its data was updated if the new record was more complete.'
     );
   } catch (error) { notice(error instanceof Error ? error.message : 'Không thể ghi Reel.', true); }
 });
@@ -530,22 +555,32 @@ el<HTMLButtonElement>('sample-button').addEventListener('click', async () => {
 });
 el<HTMLButtonElement>('csv-button').addEventListener('click', () => download('ffb-lens-reels.csv', new Blob([toCsv(visibleReels, visibleScores)], { type: 'text/csv;charset=utf-8' })));
 el<HTMLButtonElement>('xlsx-button').addEventListener('click', () => download('ffb-lens-reels.xlsx', new Blob([toXlsx(visibleReels, visibleScores) as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })));
-el<HTMLButtonElement>('clear-button').addEventListener('click', async () => {
-  if (!window.confirm(t('Xóa toàn bộ dữ liệu Reels đã lưu trên thiết bị này?', 'Delete all saved Reel data on this device?'))) return;
+el<HTMLButtonElement>('delete-account-button').addEventListener('click', async () => {
+  const deletion = selectedAccountDeletion();
+  if (!deletion || activeScan || scanStarting || scanFinalizing || deletingAccount) return;
+  if (!window.confirm(t(`Xóa ${deletion.count} video đã lưu của ${deletion.label}?`, `Delete ${deletion.count} saved videos for ${deletion.label}?`))) return;
+  deletingAccount = true;
+  scanButtons(false);
   try {
-    await writeReels([]);
-    allReels = [];
+    const remaining = removeAccountReels(allReels, deletion.key);
+    await writeReels(remaining);
+    allReels = remaining;
     refreshFilterOptions();
+    el<HTMLSelectElement>('page-filter').value = '';
+    updateUrlFromAccountFilter();
     render();
-    notice('Đã xóa toàn bộ dữ liệu Reels đã lưu.', false, 'All saved Reel data has been deleted.');
+    notice(`Đã xóa ${deletion.count} video của ${deletion.label}.`, false, `Deleted ${deletion.count} videos for ${deletion.label}.`);
   } catch { notice('Không thể xóa dữ liệu cục bộ.', true); }
+  finally { deletingAccount = false; scanButtons(false); }
 });
 
 if (typeof chrome !== 'undefined' && chrome.runtime) chrome.runtime.onMessage.addListener(handleScanUpdate);
 setInterval(() => {
   if (activeScan && Date.now() - activeScan.lastUpdate > 12_000) {
     activeScan = null;
+    scanFinalizing = true;
     scanButtons(false);
+    void ingestQueue.finally(() => { scanFinalizing = false; scanButtons(false); });
     setScanStatus('Mất kết nối với tab Reels. Có thể tab đã tải lại hoặc chuyển trang; các Reel đã đọc vẫn được lưu.', 'Lost connection to the Reels tab. The tab may have reloaded or navigated away; Reels already read are still saved.');
   }
 }, 5_000);

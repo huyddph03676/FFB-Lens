@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { strFromU8, unzipSync } from 'fflate';
 import { importCsv, parseCsv, toCsv } from './csv';
-import { dedupe, filterAndRank, filterReels, outlierBaselines, outlierScore, pageKey, reelOutlierScore, summarize } from './engine';
+import { accountDisplayLabel, dedupe, distinctAccountLabels, filterAndRank, filterReels, outlierBaselines, outlierScore, pageKey, reelOutlierScore, removeAccountReels, summarize } from './engine';
 import { normalizeDate, normalizePageUrl, parseCount, reelIdentity } from './normalize';
 import { toXlsx } from './xlsx';
 import { browserVisibleBatch, csvFileSource, ingestSourceBatch, type SourceBatch } from './sources';
@@ -186,5 +186,36 @@ describe('ranking and analytics', () => {
     expect(reelOutlierScore(b[0], baseline)).toBe(1);
     expect(baseline.get(pageKey(old)!)?.sampleSize).toBe(5);
     expect(reelOutlierScore({ ...base, page_name: '', page_url: '' }, baseline)).toBeNull();
+  });
+});
+
+describe('account-scoped deletion', () => {
+  it('removes every source for the selected account and keeps another account with the same display name', () => {
+    const facebook = { ...base, page_name: 'Creator', page_url: 'https://facebook.com/creator', reel_url: 'https://facebook.com/reel/1' };
+    const imported = { ...facebook, reel_url: 'https://facebook.com/reel/2', source: 'csv_import' };
+    const tiktok = { ...base, page_name: 'Creator', page_url: 'https://tiktok.com/@creator', reel_url: 'https://tiktok.com/@creator/video/3' };
+    expect(removeAccountReels([facebook, imported, tiktok], pageKey(facebook)!)).toEqual([tiktok]);
+  });
+  it('never treats All accounts as a deletion target', () => {
+    expect(() => removeAccountReels([base], '')).toThrow('Chọn một tài khoản');
+  });
+  it('distinguishes duplicate display names in the account selector', () => {
+    expect(distinctAccountLabels([
+      ['url:https://facebook.com/creator', 'Creator'],
+      ['url:https://tiktok.com/@creator', 'Creator'],
+      ['url:https://facebook.com/other', 'Other']
+    ])).toEqual([
+      ['url:https://facebook.com/creator', '[Facebook] Creator'],
+      ['url:https://tiktok.com/@creator', '[TikTok] Creator'],
+      ['url:https://facebook.com/other', '[Facebook] Other']
+    ]);
+    expect(distinctAccountLabels([
+      ['url:https://facebook.com/creator-one', 'Creator'],
+      ['url:https://facebook.com/creator-two', 'Creator']
+    ])).toEqual([
+      ['url:https://facebook.com/creator-one', '[Facebook] Creator · facebook.com/creator-one'],
+      ['url:https://facebook.com/creator-two', '[Facebook] Creator · facebook.com/creator-two']
+    ]);
+    expect(accountDisplayLabel('name:unknown', 'Creator')).toBe('Creator');
   });
 });
