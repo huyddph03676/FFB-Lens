@@ -46,6 +46,24 @@ describe('browser visible Reel source', () => {
     expect(batch).toMatchObject({ accessBasis: 'browser_visible_user_initiated', coverage: 'partial', viewsMetric: 'facebook_displayed_views' });
     expect(batch.reels[0]).toMatchObject({ page_url: 'https://facebook.com/page', views: 1_200_000, likes: null, comments: 42, shares: 9, source: 'Facebook · tab Reels' });
   });
+  it('stores the Facebook display name and refreshes older Reels for the same profile', async () => {
+    const profileUrl = 'https://facebook.com/profile.php?id=61589211347006';
+    const old: Reel[] = [
+      { ...base, page_url: profileUrl, page_name: 'Profile 61589211347006', reel_url: 'https://facebook.com/reel/111', views: 2000, likes: 50 },
+      { ...base, page_url: profileUrl, page_name: 'Profile 61589211347006', reel_url: 'https://facebook.com/reel/222', views: 1000 },
+      { ...base, page_url: 'https://facebook.com/profile.php?id=123', page_name: 'Profile 123', reel_url: 'https://facebook.com/reel/333' }
+    ];
+    const batch = browserVisibleBatch(`${profileUrl}&sk=reels_tab`, [{
+      reel_id: '111', reel_url: 'https://facebook.com/reel/111', account_name: 'Nguyễn Văn A', caption: '',
+      views: null, likes: null, comments: null, shares: null, published_at: null
+    }], '2026-11-15T00:00:00.000Z');
+    let persisted: Reel[] = [];
+    const result = await ingestSourceBatch(old, batch, async reels => { persisted = reels; });
+    expect(result.reels.filter(reel => reel.page_url === profileUrl).map(reel => reel.page_name)).toEqual(['Nguyễn Văn A', 'Nguyễn Văn A']);
+    expect(result.reels.find(reel => reel.reel_url.endsWith('/111'))).toMatchObject({ views: 2000, likes: 50 });
+    expect(result.reels.find(reel => reel.reel_url.endsWith('/333'))?.page_name).toBe('Profile 123');
+    expect(persisted).toEqual(result.reels);
+  });
 });
 
 describe('CSV import and export', () => {
@@ -126,6 +144,12 @@ describe('ranking and analytics', () => {
     const grid = { ...reels[0], views: 1200, likes: null, comments: null, shares: null, published_at: null };
     const detail = { ...grid, views: null, likes: 80, comments: 12, shares: 4, published_at: '2026-11-12', collected_at: '2026-11-15T00:00:00.000Z' };
     expect(dedupe([grid, detail])[0]).toMatchObject({ views: 1200, likes: 80, comments: 12, shares: 4, published_at: '2026-11-12' });
+  });
+  it('keeps a known account display name when a later scan has only the URL fallback', () => {
+    const pageUrl = 'https://facebook.com/profile.php?id=61589211347006';
+    const named = { ...reels[0], page_url: pageUrl, page_name: 'Nguyễn Văn A' };
+    const fallback = { ...named, page_name: 'Profile 61589211347006', likes: 10, collected_at: '2026-11-15T00:00:00.000Z' };
+    expect(dedupe([named, fallback])[0]).toMatchObject({ page_name: 'Nguyễn Văn A', likes: 10 });
   });
   it('sorts counts, leaves missing values last, then limits Top N', () => {
     expect(filterAndRank(reels, { ...filters, top: 3 }).map(r => r.views)).toEqual([500, 200, 100]);

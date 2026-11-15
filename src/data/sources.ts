@@ -4,6 +4,7 @@ import { writeReels } from './db';
 import { dedupe } from './engine';
 import { normalizeDate, normalizePageUrl, normalizeUrl } from './normalize';
 import type { VisibleReel } from '../facebook/extract';
+import { isDisplayAccountName, mostCommonAccountName } from '../facebook/name';
 
 export type Coverage = 'unverified' | 'partial' | 'verified_complete';
 export type AccessBasis = 'user_provided_file' | 'user_entered' | 'browser_visible_user_initiated' | 'approved_api' | 'licensed_provider';
@@ -47,7 +48,8 @@ export function browserVisibleBatch(pageUrl: string, visible: VisibleReel[], col
     throw new Error('URL Page không hợp lệ.');
   }
   const page = new URL(normalizedPage);
-  const pageName = page.pathname === '/profile.php' ? `Profile ${page.searchParams.get('id')}` : page.pathname.split('/').filter(Boolean)[0] || '';
+  const fallbackName = page.pathname === '/profile.php' ? `Profile ${page.searchParams.get('id')}` : page.pathname.split('/').filter(Boolean)[0] || '';
+  const pageName = mostCommonAccountName(visible.map(item => item.account_name)) || fallbackName;
   return {
     adapterId: 'facebook_visible_tab',
     accessBasis: 'browser_visible_user_initiated',
@@ -103,6 +105,14 @@ export async function ingestSourceBatch(
 ): Promise<IngestResult> {
   const validated = batch.reels.map(reel => validateRecord(reel, batch.viewsMetric));
   const merged = dedupe([...existing, ...validated]);
+  if (batch.adapterId === 'facebook_visible_tab') {
+    const named = validated.find(reel => isDisplayAccountName(reel.page_name, reel.page_url));
+    if (named) {
+      for (const reel of merged) {
+        if (normalizePageUrl(reel.page_url) === named.page_url) reel.page_name = named.page_name;
+      }
+    }
+  }
   await persist(merged);
   return {
     reels: merged,

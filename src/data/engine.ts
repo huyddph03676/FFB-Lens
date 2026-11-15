@@ -1,5 +1,6 @@
 import type { Filters, Reel } from '../types';
 import { normalizePageUrl, normalizeUrl, reelIdentity } from './normalize';
+import { isDisplayAccountName } from '../facebook/name';
 
 function completeness(reel: Reel): number {
   return ['views', 'likes', 'comments', 'shares', 'published_at', 'caption', 'page_name'].reduce(
@@ -43,6 +44,9 @@ export function dedupe(reels: Reel[]): Reel[] {
       if (!merged.page_name) merged.page_name = reel.page_name;
       if (!merged.page_url) merged.page_url = reel.page_url;
     }
+    const named = [...group].filter(reel => isDisplayAccountName(reel.page_name, reel.page_url))
+      .sort((a, b) => b.collected_at.localeCompare(a.collected_at))[0];
+    if (named) merged.page_name = named.page_name;
     return merged;
   });
 }

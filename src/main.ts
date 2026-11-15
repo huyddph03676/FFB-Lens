@@ -8,6 +8,7 @@ import { isFacebookPageHost, manualPageBatch, pageContextFromTab } from './data/
 import { normalizeUrl } from './data/normalize';
 import { isReelsTab, type VisibleReel } from './facebook/extract';
 import { facebookReelsContext } from './facebook/context';
+import { isDisplayAccountName } from './facebook/name';
 import { englishUi, translateError, type Language } from './i18n';
 import type { DateRange, Filters, Reel, SortKey } from './types';
 
@@ -181,7 +182,8 @@ function updatePageContext() {
   const link = el<HTMLAnchorElement>('open-page');
   if (pageUrl) {
     const context = facebookReelsContext(pageUrl)!;
-    status.textContent = t(`Tài khoản: ${context.label}. Bấm Quét khi tab này đang mở mục Reels.`, `Account: ${context.label}. Click Scan when this tab shows Reels.`);
+    const label = allReels.find(reel => pageKey(reel) === `url:${pageUrl}` && isDisplayAccountName(reel.page_name, pageUrl))?.page_name || context.label;
+    status.textContent = t(`Tài khoản: ${label}. Bấm Quét khi tab này đang mở mục Reels.`, `Account: ${label}. Click Scan when this tab shows Reels.`);
     link.href = context.reelsUrl;
     link.hidden = false;
   } else {
@@ -309,6 +311,7 @@ function handleScanUpdate(message: ScanUpdate, sender: { tab?: { id?: number } }
       refreshFilterOptions();
       el<HTMLSelectElement>('page-filter').value = `url:${scan.pageUrl}`;
       render();
+      updatePageContext();
     }).catch(error => {
       scan.ingestError = error instanceof Error ? error.message : 'Không lưu được kết quả quét.';
       setScanStatus(scan.ingestError, translateError(scan.ingestError, 'en'));
@@ -368,7 +371,9 @@ function refreshFilterOptions() {
   const sources = new Set<string>();
   allReels.forEach(reel => {
     const key = pageKey(reel);
-    if (key && !pages.has(key)) pages.set(key, reel.page_name || reel.page_url);
+    if (key && (!pages.has(key) || (key.startsWith('url:') && isDisplayAccountName(reel.page_name, reel.page_url) && !isDisplayAccountName(pages.get(key)!, reel.page_url)))) {
+      pages.set(key, reel.page_name || reel.page_url);
+    }
     if (reel.source) sources.add(reel.source);
   });
   populateFilter('page-filter', [...pages].sort((a, b) => a[1].localeCompare(b[1], language)), t('Tất cả tài khoản', 'All accounts'));

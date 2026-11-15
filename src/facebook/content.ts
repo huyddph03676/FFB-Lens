@@ -1,4 +1,5 @@
 import { extractVisibleMetrics, isReelsTab, parsePublishedValue, reelIdFromUrl, type VisibleReel } from './extract';
+import { accountNameFromDocument, mostCommonAccountName } from './name';
 
 type ScanMessage = { type: 'FFB_START'; scanId: string; maxSteps: number } | { type: 'FFB_STOP'; scanId: string };
 type ScanState = { scanId: string; stopped: boolean };
@@ -54,6 +55,7 @@ function publishedAt(card: HTMLElement): string | null {
 
 function collect(): VisibleReel[] {
   const byId = new Map<string, VisibleReel>();
+  const accountName = mostCommonAccountName([...state.metadata.values()].map(reel => reel.account_name)) || accountNameFromDocument(document);
   const links = document.querySelectorAll<HTMLAnchorElement>('a[href*="/reel/"], a[href*="/reels/"], a[href*="/videos/"]');
   for (const link of Array.from(links).slice(0, 3000)) {
     const style = getComputedStyle(link);
@@ -67,6 +69,7 @@ function collect(): VisibleReel[] {
     const candidate: VisibleReel = {
       reel_id: id,
       reel_url: `https://facebook.com/reel/${id}`,
+      account_name: accountName,
       caption: caption.slice(0, 2000),
       ...metrics,
       published_at: date
@@ -79,13 +82,14 @@ function collect(): VisibleReel[] {
     const grid = byId.get(id);
     byId.set(id, grid ? {
       ...grid,
+      account_name: accountName || metadata.account_name || grid.account_name,
       caption: metadata.caption || grid.caption,
       views: metadata.views ?? grid.views,
       likes: metadata.likes ?? grid.likes,
       comments: metadata.comments ?? grid.comments,
       shares: metadata.shares ?? grid.shares,
       published_at: metadata.published_at || grid.published_at
-    } : metadata);
+    } : { ...metadata, account_name: accountName || metadata.account_name });
   }
   return [...byId.values()];
 }

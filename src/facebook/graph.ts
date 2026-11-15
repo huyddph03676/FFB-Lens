@@ -1,5 +1,6 @@
 import { normalizeDate, parseCount } from '../data/normalize';
 import { reelIdFromUrl, type VisibleReel } from './extract';
+import { cleanAccountName } from './name';
 
 type RecordValue = Record<string, unknown>;
 
@@ -49,9 +50,12 @@ function reelFromNode(value: unknown, fallbackId: string | null = null): Visible
   const created = findKey(node, 'creation_time');
   const seconds = typeof created === 'number' || typeof created === 'string' ? Number(created) : NaN;
   const publishedAt = Number.isFinite(seconds) && seconds > 0 ? normalizeDate(new Date(seconds * 1000).toISOString()) : null;
+  const owner = object(findKey(node, 'owner'));
+  const accountName = cleanAccountName(owner?.name);
   return {
     reel_id: reelId,
     reel_url: `https://facebook.com/reel/${reelId}`,
+    ...(accountName ? { account_name: accountName } : {}),
     caption: text(findKey(node, 'message')).slice(0, 2000),
     views: count(findKey(node, 'play_count_reduced')),
     likes: count(findKey(node, 'unified_reactors')),
@@ -64,6 +68,7 @@ function reelFromNode(value: unknown, fallbackId: string | null = null): Visible
 function merge(a: VisibleReel, b: VisibleReel): VisibleReel {
   return {
     ...a,
+    ...(b.account_name || a.account_name ? { account_name: b.account_name || a.account_name } : {}),
     caption: b.caption || a.caption,
     views: b.views ?? a.views,
     likes: b.likes ?? a.likes,

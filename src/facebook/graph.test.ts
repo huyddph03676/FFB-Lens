@@ -6,10 +6,10 @@ describe('Page Reels browser response parser', () => {
     const body = JSON.stringify({ data: { page: { aggregated_fb_shorts: { edges: [
       { profile_reel_node: { node: { id: '2088464188452071', permalink_url: 'https://www.facebook.com/reel/2088464188452071/',
         creation_time: 1794448800, play_count_reduced: '45K', total_comment_count: 9,
-        unified_reactors: { count: 734 }, message: { text: 'Most people are not where they want to be' } } } }
+        unified_reactors: { count: 734 }, owner: { name: 'Fearless Motivation' }, message: { text: 'Most people are not where they want to be' } } } }
     ] } } } });
     expect(parsePageReelsResponse(body)[0]).toMatchObject({
-      reel_id: '2088464188452071', views: 45_000, likes: 734, comments: 9,
+      reel_id: '2088464188452071', account_name: 'Fearless Motivation', views: 45_000, likes: 734, comments: 9,
       shares: null, caption: 'Most people are not where they want to be'
     });
   });

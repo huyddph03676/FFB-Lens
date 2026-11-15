@@ -4,6 +4,7 @@ import { facebookReelsContext } from './context';
 export interface VisibleReel {
   reel_url: string;
   reel_id: string;
+  account_name?: string;
   caption: string;
   views: number | null;
   likes: number | null;

@@ -1,10 +1,10 @@
 # Privacy Policy — FFB Lens
 
-Updated November 14, 2026. Applies to FFB Lens extension version 0.6.2.
+Updated November 15, 2026. Applies to FFB Lens extension version 0.6.3.
 
 ## Data processed
 
-- When a user clicks **Scan Reels on tab** on a Page or profile Reels tab, the extension reloads that tab once, reads Reel cards, and observes GraphQL responses Facebook has already loaded in it. It retains only Reel URLs, captions, posted dates, views, likes, comments, and shares when available in the response. It scrolls within the selected limit and can also read a CSV file chosen by the user or manually entered records. Normalized data is stored in Chrome IndexedDB on the device.
+- When a user clicks **Scan Reels on tab** on a Page or profile Reels tab, the extension reloads that tab once, reads Reel cards, and observes GraphQL responses Facebook has already loaded in it. It retains the account display name when available, account and Reel URLs, captions, posted dates, views, likes, comments, and shares when available in the response. It scrolls within the selected limit and can also read a CSV file chosen by the user or manually entered records. Normalized data is stored in Chrome IndexedDB on the device.
 - The account URL provides context for scanned Reels, manually entered Reels, and CSV rows missing `page_url`. The extension does not make its own Facebook endpoint requests or read cookies, passwords, or content outside the selected tab. GraphQL responses are processed temporarily to extract the Reel fields above; raw responses are not stored.
 
 ## Sharing and transmission

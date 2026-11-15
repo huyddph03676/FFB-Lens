@@ -26,6 +26,7 @@ if (!page.__ffbLensObserverInstalled) {
       const old = stored.get(reel.reel_id);
       const combined = old ? {
         ...old,
+        account_name: reel.account_name || old.account_name,
         caption: reel.caption || old.caption,
         views: reel.views ?? old.views,
         likes: reel.likes ?? old.likes,
