@@ -32,6 +32,37 @@ function count(value: unknown): number | null {
   return record ? count(record.count) : null;
 }
 
+function shareCount(value: unknown): number | null {
+  let reduced: number | null = null;
+  function visit(item: unknown, depth: number): number | null {
+    if (depth > 18) return null;
+    const record = object(item);
+    if (record) {
+      for (const key of ['total_share_count', 'share_count', 'reshares']) {
+        const exact = count(record[key]);
+        if (exact !== null) return exact;
+      }
+      if (reduced === null) {
+        for (const key of ['share_count_reduced', 'i18n_share_count']) {
+          reduced = count(record[key]);
+          if (reduced !== null) break;
+        }
+      }
+      for (const child of Object.values(record)) {
+        const exact = visit(child, depth + 1);
+        if (exact !== null) return exact;
+      }
+    } else if (Array.isArray(item)) {
+      for (const child of item) {
+        const exact = visit(child, depth + 1);
+        if (exact !== null) return exact;
+      }
+    }
+    return null;
+  }
+  return visit(value, 0) ?? reduced;
+}
+
 function text(value: unknown): string {
   if (typeof value === 'string') return value;
   const record = object(value);
@@ -60,7 +91,7 @@ function reelFromNode(value: unknown, fallbackId: string | null = null): Visible
     views: count(findKey(node, 'play_count_reduced')),
     likes: count(findKey(node, 'unified_reactors')),
     comments: count(findKey(node, 'total_comment_count')),
-    shares: count(findKey(node, 'total_share_count') ?? findKey(node, 'share_count')),
+    shares: shareCount(node),
     published_at: publishedAt
   };
 }

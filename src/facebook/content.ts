@@ -4,7 +4,7 @@ import { accountNameFromDocument, mostCommonAccountName } from './name';
 type ScanMessage = { type: 'FFB_START'; scanId: string; maxSteps: number } | { type: 'FFB_STOP'; scanId: string };
 type ScanState = { scanId: string; stopped: boolean };
 type ScanWindow = Window & { __ffbLensScan?: { active: ScanState | null; installed: boolean; metadata: Map<string, VisibleReel> } };
-type Diagnostics = { links: number; recognized: number; withViews: number; withLikes: number; withComments: number; withDates: number; fromBrowser: number; scrollTop: number; scrollHeight: number };
+type Diagnostics = { links: number; recognized: number; withViews: number; withLikes: number; withComments: number; withShares: number; withDates: number; fromBrowser: number; scrollTop: number; scrollHeight: number };
 
 declare const chrome: {
   runtime: {
@@ -118,7 +118,7 @@ async function run(scan: ScanState, maxSteps: number) {
   let stale = 0;
   let reason = 'Đã đạt giới hạn số lần cuộn.';
   let lastStep = 0;
-  let diagnostics: Diagnostics = { links: 0, recognized: 0, withViews: 0, withLikes: 0, withComments: 0, withDates: 0, fromBrowser: 0, scrollTop: 0, scrollHeight: 0 };
+  let diagnostics: Diagnostics = { links: 0, recognized: 0, withViews: 0, withLikes: 0, withComments: 0, withShares: 0, withDates: 0, fromBrowser: 0, scrollTop: 0, scrollHeight: 0 };
   try {
     if (!isReelsTab(location.href)) throw new Error('Chỉ quét khi tab đang ở mục Reels của một Page.');
     state.metadata.clear();
@@ -138,6 +138,7 @@ async function run(scan: ScanState, maxSteps: number) {
         withViews: current.filter(reel => reel.views !== null).length,
         withLikes: current.filter(reel => reel.likes !== null).length,
         withComments: current.filter(reel => reel.comments !== null).length,
+        withShares: current.filter(reel => reel.shares !== null).length,
         withDates: current.filter(reel => reel.published_at !== null).length,
         fromBrowser: state.metadata.size,
         scrollTop: target.scrollTop,

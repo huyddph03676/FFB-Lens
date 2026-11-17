@@ -40,7 +40,7 @@ interface ScanUpdate {
   reels: VisibleReel[];
   step: number;
   reason: string;
-  diagnostics?: { links: number; recognized: number; withViews: number; withLikes: number; withComments: number; withDates: number; fromBrowser: number; scrollTop: number; scrollHeight: number };
+  diagnostics?: { links: number; recognized: number; withViews: number; withLikes: number; withComments: number; withShares: number; withDates: number; fromBrowser: number; scrollTop: number; scrollHeight: number };
 }
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
@@ -328,8 +328,8 @@ function handleScanUpdate(message: ScanUpdate, sender: { tab?: { id?: number } }
   }
   if (message.phase === 'progress' || message.phase === 'heartbeat') {
     const d = message.diagnostics;
-    const detailVi = d ? ` · ${d.fromBrowser} từ ${scan.platform === 'tiktok' ? 'TikTok' : 'Facebook'} · views ${d.withViews}, likes ${d.withLikes}, comments ${d.withComments}, ngày ${d.withDates}` : '';
-    const detailEn = d ? ` · ${d.fromBrowser} from ${scan.platform === 'tiktok' ? 'TikTok' : 'Facebook'} · views ${d.withViews}, likes ${d.withLikes}, comments ${d.withComments}, dates ${d.withDates}` : '';
+    const detailVi = d ? ` · ${d.fromBrowser} từ ${scan.platform === 'tiktok' ? 'TikTok' : 'Facebook'} · views ${d.withViews}, likes ${d.withLikes}, comments ${d.withComments}, shares ${d.withShares ?? 0}, ngày ${d.withDates}` : '';
+    const detailEn = d ? ` · ${d.fromBrowser} from ${scan.platform === 'tiktok' ? 'TikTok' : 'Facebook'} · views ${d.withViews}, likes ${d.withLikes}, comments ${d.withComments}, shares ${d.withShares ?? 0}, dates ${d.withDates}` : '';
     setScanStatus(`Đang quét: ${scan.seen.size} video nhận diện · ${message.step} lần cuộn${detailVi}.`, `Scanning: ${scan.seen.size} videos found · ${message.step} scrolls${detailEn}.`);
   } else if (message.phase === 'done' || message.phase === 'error') {
     activeScan = null;
@@ -337,8 +337,8 @@ function handleScanUpdate(message: ScanUpdate, sender: { tab?: { id?: number } }
     scanButtons(false);
     void ingestQueue.then(() => {
       const d = message.diagnostics;
-      const detailVi = d ? ` Bước cuối: ${d.links} liên kết ứng viên, ${d.fromBrowser} video từ ${scan.platform === 'tiktok' ? 'TikTok' : 'Facebook'}; views ${d.withViews}, likes ${d.withLikes}, comments ${d.withComments}, ngày ${d.withDates}.` : '';
-      const detailEn = d ? ` Final step: ${d.links} candidate links, ${d.fromBrowser} videos from ${scan.platform === 'tiktok' ? 'TikTok' : 'Facebook'}; views ${d.withViews}, likes ${d.withLikes}, comments ${d.withComments}, dates ${d.withDates}.` : '';
+      const detailVi = d ? ` Bước cuối: ${d.links} liên kết ứng viên, ${d.fromBrowser} video từ ${scan.platform === 'tiktok' ? 'TikTok' : 'Facebook'}; views ${d.withViews}, likes ${d.withLikes}, comments ${d.withComments}, shares ${d.withShares ?? 0}, ngày ${d.withDates}.` : '';
+      const detailEn = d ? ` Final step: ${d.links} candidate links, ${d.fromBrowser} videos from ${scan.platform === 'tiktok' ? 'TikTok' : 'Facebook'}; views ${d.withViews}, likes ${d.withLikes}, comments ${d.withComments}, shares ${d.withShares ?? 0}, dates ${d.withDates}.` : '';
       if (scan.ingestError) setScanStatus(scan.ingestError, translateError(scan.ingestError, 'en'));
       else setScanStatus(`${message.phase === 'error' ? 'Quét lỗi' : 'Đã quét'}: ${scan.seen.size} video nhận diện.${detailVi} ${message.reason} Kết quả chỉ phản ánh phần tab đã tải.`, `${message.phase === 'error' ? 'Scan failed' : 'Scan complete'}: ${scan.seen.size} videos found.${detailEn} ${translateError(message.reason, 'en')} Results cover only content loaded in the tab.`);
     }).finally(() => { scanFinalizing = false; scanButtons(false); });
