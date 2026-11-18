@@ -5,7 +5,7 @@ FFB Lens is a Manifest V3 Chrome extension with a side panel for Facebook Reels 
 ## What you can do
 
 - Scan a Facebook Page or profile Reels tab, or a TikTok `@username` profile, with a limit of 10–100 scrolls. Stop early or rescan to update saved records without duplicating videos.
-- Rank videos by views, likes, comments, shares, or posted date. Filter by account, date, source, and minimum views; inspect summary statistics and Outlier Score.
+- Select Top N videos by views, likes, comments, shares, or posted date, then optionally reorder that Top N by another criterion. Add a final tie-breaker; filter by account, date, source, and minimum views; inspect summary statistics and Outlier Score.
 - Recognize accounts by their Facebook or TikTok display name when available. `[Facebook]` and `[TikTok]` labels distinguish platforms in the account selector, status, and video cards.
 - Keep results on your device. Delete one selected account's saved videos, or export the displayed results to CSV/XLSX. Manual entry and CSV import are available when needed.
 
@@ -33,6 +33,7 @@ npm run build
 4. Click the **FFB Lens** toolbar icon to open the side panel. The extension reads the account URL from the tab; use **Use account from tab** if needed. If Chrome has not granted access to that tab's URL, this button asks for Facebook/TikTok site access before reading the URL.
 5. Select a limit of 10–100 scrolls, click **Scan videos on tab**, and grant access to the selected platform when Chrome asks for it the first time. The extension reloads the tab once to capture data available when the page loads, then scrolls it. The side panel updates video counts, data coverage, and rankings during the scan. Click **Stop** to end early. DevTools and console commands are not needed.
 6. Choose **English** from the **Language** menu at the top of the side panel if desired. After scanning, **ACCOUNT** shows `[Facebook]` or `[TikTok]` before the display name when the selected platform provides it; the same label appears in account status and video cards. Accounts with the same name on one platform also show their URLs in **ACCOUNT**. Rescanning updates older saved videos for that account. The account URL or ID remains the stable key. Selecting an **ACCOUNT** updates the account URL field and its profile link; **All accounts** clears the field. Use filters, statistics, or manual entry when metrics are missing. CSV import is under **Import data or view sample**.
+7. Choose **Select Top by**, **Top**, then optionally **Reorder Top by**. For example, **Most shares → Top 10 → Newest** selects the ten most-shared videos from the filtered data, then shows only those ten in newest-first order. **Break ties by** applies only when two videos match on the reorder criterion. Videos with missing values rank last at the relevant step. The displayed order is also used in CSV/XLSX exports.
 
 `npm run dev` serves the UI in a browser for quick development. To test extension behavior, run `npm run build`, load `dist` in `chrome://extensions`, and click **Reload** on the extension card after each new build. Run `npm run package` when you need a ZIP in `release/`.
 
@@ -93,7 +94,7 @@ Comma, semicolon, and tab delimiters are supported, along with a UTF-8 BOM, quot
 1. On a Page or profile Reels tab, open the side panel and confirm that the account URL is recognized. Select 10 scrolls and click **Scan videos on tab**. Check that the video count grows and that each result opens its original video.
 2. Compare several Reels with Facebook and, for a matching Page, a SortLens export. Check posted dates, likes, comments, and the response-data count in the status line. Unavailable metrics must stay blank; rounded values such as `1.2M` are approximate. Stop and rescan to verify that Reels are not duplicated.
 3. To test sample data, open **Import data or view sample**. The sample contains six Reels; its Vietnamese 1.2-million count should parse as 1,200,000.
-4. Switch between Top 10 and Top 20, sort by views and likes, and try the 7/30/90-day, custom date, account, source, and minimum-view filters.
+4. Switch between Top 10 and Top 20, select Top by shares, then reorder the chosen videos by date. Confirm that videos outside the selected Top N do not enter after reordering. Try the tie-breaker and the 7/30/90-day, custom date, account, source, and minimum-view filters.
 5. Check the six summary cards, the most-viewed Reel, and Outlier Score. Outlier scores should appear for sample Reels with enough view data in the same account cohort.
 6. Export CSV and XLSX, then check row order, row counts, source columns, and `outlier_score` in both files.
 7. Close and reopen the side panel to confirm that IndexedDB records remain. Select an **ACCOUNT**, then use **Delete account data** to remove only that account's saved videos. The button is disabled for **All accounts**. The confirmation counts every saved video for that account, including videos outside the current search, time, source, and Top filters.

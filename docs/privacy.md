@@ -1,6 +1,6 @@
 # Privacy Policy — FFB Lens
 
-Updated November 17, 2026. Applies to FFB Lens extension version 0.7.4.
+Updated November 18, 2026. Applies to FFB Lens extension version 0.7.6.
 
 ## Data processed
 

@@ -22,6 +22,8 @@ export interface Filters {
   source: string;
   minViews: number | null;
   sort: SortKey;
+  sortWithinTop?: SortKey | '';
+  sortTieBreaker?: SortKey | '';
   range: DateRange;
   from: string;
   to: string;

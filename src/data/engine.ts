@@ -1,4 +1,4 @@
-import type { Filters, Reel } from '../types';
+import type { Filters, Reel, SortKey } from '../types';
 import { normalizePageUrl, normalizeUrl, reelIdentity } from './normalize';
 import { isDisplayAccountName } from '../facebook/name';
 
@@ -114,23 +114,37 @@ export function filterReels(reels: Reel[], filters: Filters): Reel[] {
   });
 }
 
-export function filterAndRank(reels: Reel[], filters: Filters): Reel[] {
-  const filtered = filterReels(reels, filters);
-  const metric = filters.sort as 'views' | 'likes' | 'comments' | 'shares';
-  filtered.sort((a, b) => {
-    if (filters.sort === 'newest' || filters.sort === 'oldest') {
-      const av = a.published_at ? new Date(a.published_at).getTime() : null;
-      const bv = b.published_at ? new Date(b.published_at).getTime() : null;
-      if (av === null) return bv === null ? 0 : 1;
-      if (bv === null) return -1;
-      return filters.sort === 'newest' ? bv - av : av - bv;
-    }
-    const av = a[metric], bv = b[metric];
-    if (av === null) return bv === null ? 0 : 1;
+function sortField(key: SortKey): string {
+  return key === 'newest' || key === 'oldest' ? 'published_at' : key;
+}
+
+function compareReels(a: Reel, b: Reel, keys: SortKey[]): number {
+  for (const key of keys) {
+    const date = key === 'newest' || key === 'oldest';
+    const parsedA = date && a.published_at ? new Date(a.published_at).getTime() : null;
+    const parsedB = date && b.published_at ? new Date(b.published_at).getTime() : null;
+    const metric = key as Exclude<SortKey, 'newest' | 'oldest'>;
+    const av = date ? (parsedA !== null && Number.isFinite(parsedA) ? parsedA : null) : a[metric];
+    const bv = date ? (parsedB !== null && Number.isFinite(parsedB) ? parsedB : null) : b[metric];
+    if (av === null && bv === null) continue;
+    if (av === null) return 1;
     if (bv === null) return -1;
-    return bv - av;
-  });
-  return filtered.slice(0, filters.top);
+    const difference = key === 'oldest' ? av - bv : bv - av;
+    if (difference !== 0) return difference;
+  }
+  return 0;
+}
+
+export function filterAndRank(reels: Reel[], filters: Filters): Reel[] {
+  const selected = filterReels(reels, filters)
+    .sort((a, b) => compareReels(a, b, [filters.sort]))
+    .slice(0, filters.top);
+  const withinTop = filters.sortWithinTop;
+  if (!withinTop || sortField(withinTop) === sortField(filters.sort)) return selected;
+  const tieBreaker = filters.sortTieBreaker;
+  const finalKeys = tieBreaker && ![filters.sort, withinTop].some(key => sortField(key) === sortField(tieBreaker))
+    ? [withinTop, tieBreaker] : [withinTop];
+  return selected.sort((a, b) => compareReels(a, b, finalKeys));
 }
 
 export interface OutlierBaseline { median: number | null; sampleSize: number }

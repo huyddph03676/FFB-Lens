@@ -93,9 +93,14 @@ app.innerHTML = `
       <div class="scope-note">Xếp hạng phản ánh video đã quét, ghi hoặc nhập. Phạm vi quét có giới hạn và có thể thiếu video hoặc chỉ số.</div>
       <div class="filter-grid">
         <label class="control wide"><span>TÌM KIẾM</span><input id="query" type="search" placeholder="Caption, Page, URL..." /></label>
-        <label class="control"><span>SẮP XẾP</span><select id="sort"><option value="views">Nhiều lượt xem</option><option value="likes">Nhiều lượt thích</option><option value="comments">Nhiều bình luận</option><option value="shares">Nhiều chia sẻ</option><option value="newest">Mới nhất</option><option value="oldest">Cũ nhất</option></select></label>
+        <label class="control"><span>CHỌN TOP THEO</span><select id="sort"><option value="views">Nhiều lượt xem</option><option value="likes">Nhiều lượt thích</option><option value="comments">Nhiều bình luận</option><option value="shares">Nhiều chia sẻ</option><option value="newest">Mới nhất</option><option value="oldest">Cũ nhất</option></select></label>
         <label class="control"><span>THỜI GIAN</span><select id="range"><option value="all">Tất cả dữ liệu</option><option value="7">7 ngày</option><option value="30">30 ngày</option><option value="90">90 ngày</option><option value="custom">Tùy chỉnh</option></select></label>
         <label class="control"><span>TOP</span><select id="top"><option>10</option><option>20</option><option>50</option><option>100</option></select></label>
+      </div>
+      <div class="sort-stages">
+        <label class="control"><span>XẾP LẠI TOP THEO</span><select id="sort-within-top"><option value="">Không dùng</option></select></label>
+        <label class="control"><span>PHÁ HÒA THEO</span><select id="sort-tie-breaker"><option value="">Không dùng</option></select></label>
+        <p class="field-help">Bước 1: lấy Top theo tiêu chí đầu. Bước 2: xếp lại chỉ các video trong Top. Tiêu chí phá hòa chỉ dùng khi giá trị bước 2 bằng nhau.</p>
       </div>
       <div id="date-controls" class="date-controls" hidden><label>Từ ngày<input id="from" type="date" /></label><label>Đến ngày<input id="to" type="date" /></label></div>
       <div class="advanced-filters">
@@ -111,6 +116,11 @@ app.innerHTML = `
     </section>
     <footer>FFB LENS <span>·</span> LOCAL FIRST <span>·</span> <a id="privacy-link" href="./privacy.html" target="_blank" rel="noopener noreferrer">QUYỀN RIÊNG TƯ</a></footer>
   </main>`;
+
+for (const id of ['sort-within-top', 'sort-tie-breaker']) {
+  const select = document.getElementById(id) as HTMLSelectElement;
+  for (const option of Array.from((document.getElementById('sort') as HTMLSelectElement).options)) select.add(option.cloneNode(true) as HTMLOptionElement);
+}
 
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 let language: Language = localStorage.getItem('ffb-lens-language') === 'en' ? 'en' : 'vi';
@@ -354,11 +364,29 @@ function currentFilters(): Filters {
     source: el<HTMLSelectElement>('source-filter').value,
     minViews: parsedMinViews !== null && Number.isFinite(parsedMinViews) ? Math.max(0, Math.floor(parsedMinViews)) : null,
     sort: el<HTMLSelectElement>('sort').value as SortKey,
+    sortWithinTop: el<HTMLSelectElement>('sort-within-top').value as SortKey | '',
+    sortTieBreaker: el<HTMLSelectElement>('sort-tie-breaker').value as SortKey | '',
     range: el<HTMLSelectElement>('range').value as DateRange,
     from: el<HTMLInputElement>('from').value,
     to: el<HTMLInputElement>('to').value,
     top: Number(el<HTMLSelectElement>('top').value)
   };
+}
+
+function syncSortStages() {
+  const selects = ['sort', 'sort-within-top', 'sort-tie-breaker'].map(id => el<HTMLSelectElement>(id));
+  const used = new Set<string>();
+  selects.forEach((select, index) => {
+    if (index === 2 && !selects[1].value) select.value = '';
+    const field = select.value === 'newest' || select.value === 'oldest' ? 'published_at' : select.value;
+    if (field && used.has(field)) select.value = '';
+    select.disabled = index === 2 && !selects[1].value;
+    for (const option of Array.from(select.options)) {
+      const optionField = option.value === 'newest' || option.value === 'oldest' ? 'published_at' : option.value;
+      option.disabled = !!optionField && used.has(optionField);
+    }
+    if (select.value) used.add(select.value === 'newest' || select.value === 'oldest' ? 'published_at' : select.value);
+  });
 }
 
 function populateFilter(id: string, options: [string, string][], allLabel: string) {
@@ -547,7 +575,9 @@ el<HTMLButtonElement>('sample-button').addEventListener('click', async () => {
   try { const response = await fetch('./sample-reels.csv'); await handleFile(new File([await response.text()], 'sample-reels.csv', { type: 'text/csv' })); }
   catch { notice('Không thể tải dữ liệu mẫu.', true); }
 });
-['query', 'sort', 'range', 'top', 'from', 'to', 'page-filter', 'source-filter', 'min-views'].forEach(id => {
+['sort', 'sort-within-top', 'sort-tie-breaker'].forEach(id => el<HTMLSelectElement>(id).addEventListener('change', () => { syncSortStages(); render(); }));
+syncSortStages();
+['query', 'range', 'top', 'from', 'to', 'page-filter', 'source-filter', 'min-views'].forEach(id => {
   el(id).addEventListener(['query', 'min-views'].includes(id) ? 'input' : 'change', () => {
     el('date-controls').hidden = el<HTMLSelectElement>('range').value !== 'custom';
     render();

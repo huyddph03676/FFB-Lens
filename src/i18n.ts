@@ -69,6 +69,8 @@ export const englishUi: Record<string, string> = {
   'Xếp hạng phản ánh Reel đã quét, ghi hoặc nhập. Phạm vi quét có giới hạn và có thể thiếu Reel hoặc chỉ số.': 'Rankings include scanned, saved, and imported Reels. A scan may miss Reels or metrics.',
   'TÌM KIẾM': 'SEARCH', 'SẮP XẾP': 'SORT BY', 'Nhiều lượt xem': 'Most views', 'Nhiều lượt thích': 'Most likes',
   'Nhiều bình luận': 'Most comments', 'Nhiều chia sẻ': 'Most shares', 'Mới nhất': 'Newest', 'Cũ nhất': 'Oldest',
+  'CHỌN TOP THEO': 'SELECT TOP BY', 'XẾP LẠI TOP THEO': 'REORDER TOP BY', 'PHÁ HÒA THEO': 'BREAK TIES BY', 'Không dùng': 'None',
+  'Bước 1: lấy Top theo tiêu chí đầu. Bước 2: xếp lại chỉ các video trong Top. Tiêu chí phá hòa chỉ dùng khi giá trị bước 2 bằng nhau.': 'Step 1: select Top videos by the first criterion. Step 2: reorder only those videos. The tie-breaker applies when step 2 values match.',
   'THỜI GIAN': 'TIME RANGE', 'Tất cả dữ liệu': 'All data', '7 ngày': '7 days', '30 ngày': '30 days',
   '90 ngày': '90 days', 'Tùy chỉnh': 'Custom', 'Từ ngày': 'From', 'Đến ngày': 'To',
   'Tất cả Page': 'All Pages', 'NGUỒN DỮ LIỆU': 'DATA SOURCE', 'Tất cả nguồn': 'All sources',

@@ -155,6 +155,35 @@ describe('ranking and analytics', () => {
     expect(filterAndRank(reels, { ...filters, top: 3 }).map(r => r.views)).toEqual([500, 200, 100]);
     expect(filterAndRank(reels, filters).at(-1)?.views).toBeNull();
   });
+  it('selects Top 10 by shares, then reorders only those videos by newest date', () => {
+    const ranked: Reel[] = Array.from({ length: 12 }, (_, index) => ({
+      ...base,
+      reel_id: String(index + 1),
+      shares: index + 1,
+      published_at: `2026-11-${String(12 - index).padStart(2, '0')}`
+    }));
+    const sorted = filterAndRank(ranked, { ...filters, sort: 'shares', sortWithinTop: 'newest', top: 10 });
+    expect(sorted.map(reel => reel.reel_id)).toEqual(['3', '4', '5', '6', '7', '8', '9', '10', '11', '12']);
+    expect(sorted.map(reel => reel.shares)).toEqual([3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+  });
+  it('uses the final criterion only to break ties within the selected Top N', () => {
+    const ranked = [
+      { ...base, reel_id: 'a', shares: 50, likes: 10, published_at: '2026-11-12' },
+      { ...base, reel_id: 'b', shares: 40, likes: 30, published_at: '2026-11-12' },
+      { ...base, reel_id: 'c', shares: 30, likes: 100, published_at: '2026-11-11' },
+      { ...base, reel_id: 'd', shares: 20, likes: 1000, published_at: '2026-11-14' }
+    ];
+    expect(filterAndRank(ranked, { ...filters, sort: 'shares', sortWithinTop: 'newest', sortTieBreaker: 'likes', top: 3 }).map(reel => reel.reel_id)).toEqual(['b', 'a', 'c']);
+  });
+  it('ignores repeated sort fields, including opposite date directions', () => {
+    const ranked = [
+      { ...base, reel_id: 'a', views: 100, published_at: '2026-11-12' },
+      { ...base, reel_id: 'b', views: 200, published_at: '2026-11-12' },
+      { ...base, reel_id: 'c', views: 300, published_at: '2026-11-11' }
+    ];
+    expect(filterAndRank(ranked, { ...filters, sort: 'newest', sortWithinTop: 'oldest', sortTieBreaker: 'views' }).map(reel => reel.reel_id)).toEqual(['a', 'b', 'c']);
+    expect(filterAndRank(ranked, { ...filters, sort: 'newest', sortWithinTop: 'views', sortTieBreaker: 'oldest' }).map(reel => reel.reel_id)).toEqual(['c', 'b', 'a']);
+  });
   it('filters recent dates and excludes unknown dates', () => {
     expect(filterAndRank(reels, { ...filters, range: '7' }).map(r => r.views)).toEqual([200, 100]);
   });
